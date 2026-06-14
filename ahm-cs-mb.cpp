@@ -60,7 +60,7 @@ void AHM::MBpoisson(const int ntraj, const int nstep, const double dt,
 
   for(int j=0; j<Norb; j++) expEndt[j] = exp(-I*dt*En[j]);
 
-  int ntraj_local = ntraj, *jc = array1d<int>(nstep);
+  int ntraj_local = ntraj;
 #ifdef _YYY_MPI_
   ntraj_local = ntraj/nproc;
   if(myid==0) ntraj_local += ntraj - ntraj_local*nproc;
@@ -79,11 +79,13 @@ void AHM::MBpoisson(const int ntraj, const int nstep, const double dt,
             nbloc = 5;
 #ifdef _YYY_REALSPACE_AV_
   dcomplex ***wf    = array3d<dcomplex>(nwf+1, Nhs, npt);
+  dcomplex  *wfbuf = array1d<dcomplex>(npt);
   cswf(npt, xmin, dx, mass, freq, wgt0*Lfct, alp0, wf[0][state_init]);
 #else
   const int Neig = 200;
   dcomplex ***wf   = array3d<dcomplex>(nwf+1, Nhs, Neig+1),
-           *aux    = array1d<dcomplex>(Neig+1);
+           *aux    = array1d<dcomplex>(Neig+1),
+           *wfbuf  = array1d<dcomplex>(Neig+1);
   prepare_CS2En(Neig) ;
   wfCS2En(Neig, wgt0*Lfct, alp0, aux, wf[0][state_init]);
 #endif
@@ -94,6 +96,7 @@ void AHM::MBpoisson(const int ntraj, const int nstep, const double dt,
   for(int j=0; j<=nstep; j++) sclf[j] = exp(rate*j)/ntraj;
 
   int idx, istate,
+      *jc    = array1d<int>(nstep+1),
       *state = array1d<int>(Nel),      // the occupied orbitals
       *vac   = array1d<int>(Nvac),     // the vacant orbitals
       *vecn  = array1d<int>(Norb);     // an auxiliary vector
@@ -181,10 +184,16 @@ void AHM::MBpoisson(const int ntraj, const int nstep, const double dt,
       jc[nj]++;
 
       if(j%nbloc==0) {
+        const int it = j/nbloc;
+        // Build one trajectory contribution first; the generator routines may overwrite output.
 #ifdef _YYY_REALSPACE_AV_
-        cswf(npt, xmin, dx, mass, freq, wgt*Iton[nj%4]*sclf[j], alp, wf[j/nbloc][istate]);
+        bzero(wfbuf, sizeof(dcomplex)*npt);
+        cswf(npt, xmin, dx, mass, freq, wgt*Iton[nj%4]*sclf[j], alp, wfbuf);
+        for(int l=0; l<npt; l++) wf[it][istate][l] += wfbuf[l];
 #else
-        wfCS2En(Neig, wgt*Iton[nj%4]*sclf[j], alp, aux, wf[j/nbloc][istate]);
+        bzero(wfbuf, sizeof(dcomplex)*(Neig+1));
+        wfCS2En(Neig, wgt*Iton[nj%4]*sclf[j], alp, aux, wfbuf);
+        for(int l=0; l<=Neig; l++) wf[it][istate][l] += wfbuf[l];
 #endif
       }
     }
@@ -202,16 +211,24 @@ void AHM::MBpoisson(const int ntraj, const int nstep, const double dt,
   memcpy(**wf, **avg, sizeof(dcomplex)*(1+nwf)*Nhs*nmem);
   free3d(avg);
 
-  int *jcl  = array1d<int>(nstep);
-  MPI_Allreduce(jc, jcl,  nstep, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  memcpy(jc, jcl, sizeof(int)*nstep);
+  int *jcl  = array1d<int>(nstep+1);
+  MPI_Allreduce(jc, jcl,  nstep+1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  memcpy(jc, jcl, sizeof(int)*(nstep+1));
   free1d(jcl);
 #endif
 
   if(myid != master) {
-    free2d(wf);
+    free3d(wf);
+    free1d(wfbuf);
+#ifndef _YYY_REALSPACE_AV_
+    free1d(aux);
+#endif
+    free1d(expEndt);
     free1d(sclf);
     free1d(jc);
+    free1d(state);
+    free1d(vac);
+    free1d(vecn);
     return;
   }
 
@@ -226,15 +243,22 @@ void AHM::MBpoisson(const int ntraj, const int nstep, const double dt,
 
   sprintf(fnm, "ahm-sepjc-s%d-n%d-%d.dat", Norb, Nel, ntraj);
   FL = fopen(fnm, "w");
-  for(int t=0; t<nstep; t++) {
+  for(int t=0; t<=nstep; t++) {
     fprintf(FL, "%20d %1.16e\n", t, jc[t]*1.0/ntraj);
   }
   fclose(FL);
 
-  free2d(wf);
+  free3d(wf);
+  free1d(wfbuf);
+#ifndef _YYY_REALSPACE_AV_
+  free1d(aux);
+#endif
+  free1d(expEndt);
   free1d(sclf);
   free1d(jc);
+  free1d(state);
+  free1d(vac);
+  free1d(vecn);
 
 	return;
 }
-
