@@ -110,7 +110,7 @@ template<class T> inline T *array1d(const size_t m) {
 template<class T> inline T *realloc1d(T *arr, const size_t m, const size_t mold) {
   if(m == mold) return arr;
 
-  T *ptr = (T *)malloc(ptr, sizeof(T)*m);
+  T *ptr = (T *)malloc(sizeof(T)*m);
   if(!ptr) {
     fprintf(stderr, "Error: realloc1d --- realloc for 1d array fails.\n");
     return (NULL);

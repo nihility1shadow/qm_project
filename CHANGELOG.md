@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.0 - Fix 1D reallocation helper
+
+Function:
+- Restore `realloc1d` so code using dynamic 1D reallocation can compile and allocate correctly.
+
+Changes:
+- Replace the invalid `malloc(ptr, size)` call with `malloc(size)` in `yyy_inlines.h`.
+
 ## v0.3.0 - Version notes
 
 Function:
