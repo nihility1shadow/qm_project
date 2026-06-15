@@ -135,9 +135,14 @@ template<class T> inline T **array2d(const size_t n, const size_t m) {
 #endif
 
   a  = (T **)calloc(n, sizeof(T *));
+  if(a == NULL) {
+    fprintf(stderr, "Error: array2d --- failed to allocate row pointers.\n");
+    abort ();
+  }
   *a = (T *)calloc(n*m, sizeof(T));
-  if(*a == NULL || a == NULL) {
-    fprintf(stderr, "Error: array2d --- failed to allocate memory.\n");
+  if(*a == NULL) {
+    free(a);
+    fprintf(stderr, "Error: array2d --- failed to allocate data.\n");
     abort ();
   }
   for(i=1; i<n; i++)  *(a+i) = *(a+i-1) + m;
@@ -200,8 +205,23 @@ template <class T> inline T ***array3d(const size_t m, const size_t n, const siz
     T ***a;
 
     a = (T ***)malloc(sizeof(T **)*m);
+    if(a == NULL) {
+      fprintf(stderr, "Error: array3d --- failed to allocate slab pointers.\n");
+      abort ();
+    }
    *a = (T  **)malloc(sizeof(T  *)*m*n);
+    if(*a == NULL) {
+      free(a);
+      fprintf(stderr, "Error: array3d --- failed to allocate row pointers.\n");
+      abort ();
+    }
   **a = (T   *)malloc(sizeof(T   )*m*n*l);
+    if(**a == NULL) {
+      free(*a);
+      free(a);
+      fprintf(stderr, "Error: array3d --- failed to allocate data.\n");
+      abort ();
+    }
 
     for(i=1; i<m; i++) a[i] = a[i-1] + n;
     for(i=0; i<m; i++) {
@@ -218,9 +238,31 @@ template <class T> inline T ****array4d(const size_t m, const size_t n, const si
     T ****a;
 
      a = (T ****)malloc(sizeof(T ***)*m);
+     if(a == NULL) {
+       fprintf(stderr, "Error: array4d --- failed to allocate block pointers.\n");
+       abort ();
+     }
     *a = (T  ***)malloc(sizeof(T  **)*m*n);
+     if(*a == NULL) {
+       free(a);
+       fprintf(stderr, "Error: array4d --- failed to allocate slab pointers.\n");
+       abort ();
+     }
    **a = (T   **)malloc(sizeof(T   *)*m*n*l);
+     if(**a == NULL) {
+       free(*a);
+       free(a);
+       fprintf(stderr, "Error: array4d --- failed to allocate row pointers.\n");
+       abort ();
+     }
   ***a = (T    *)malloc(sizeof(T    )*m*n*l*k);
+     if(***a == NULL) {
+       free(**a);
+       free(*a);
+       free(a);
+       fprintf(stderr, "Error: array4d --- failed to allocate data.\n");
+       abort ();
+     }
 
     for(i=1; i<m; i++) a[i] = a[i-1] + n;
     for(i=0; i<m; i++) {

@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.8.0 - Harden array allocation helpers
+
+Function:
+- Make multi-dimensional allocation helpers fail predictably when memory allocation fails.
+
+Changes:
+- Check `array2d` row-pointer allocation before dereferencing it.
+- Report separate allocation failures for pointer layers and data blocks.
+- Add allocation checks and cleanup for `array3d` and `array4d`.
+
 ## v0.7.0 - Repair Kondo DP table construction
 
 Function:
