@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.0 - Restore Johnson path sampler
+
+Function:
+- Provide a working Johnson graph path sampler used by the Kondo path sampler.
+
+Changes:
+- Replace the placeholder `Johnson-path-sampler.cpp` class declaration copy with function implementations.
+- Add the Johnson distance DP table and conditional path sampling logic.
+- Implement `get_random_element`, `print_path`, and `verify_path`.
+- Add a header guard and release the allocated `Ptd` table in the destructor.
+- Define the shared `log_table` storage used by the sampler.
+
 ## v0.4.0 - Fix 1D reallocation helper
 
 Function:

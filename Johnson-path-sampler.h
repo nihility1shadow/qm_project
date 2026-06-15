@@ -1,3 +1,6 @@
+#ifndef _YYY_JOHNSON_PATH_SAMPLER_
+#define _YYY_JOHNSON_PATH_SAMPLER_
+
 #include <vector>
 #include <set>
 #include <random>
@@ -19,7 +22,7 @@ class JohnsonPathSampler {
 public:
     double **Ptd;
     JohnsonPathSampler(int N0, int M0, int kmax) 
-        : N(N0), M(M0), Kmax(kmax), Dmax(MIN(M0, N0 - M0)) {
+        : Ptd(NULL), N(N0), M(M0), Kmax(kmax), Dmax(MIN(M0, N0 - M0)) {
         if(!log_table) {
           log_table = array1d<double>(2*N0+1);
           log_table[0] = -1.e-100;
@@ -27,14 +30,13 @@ public:
         }
         compute_dp_table() ;
     }
-    ~JohnsonPathSampler() { free2d(L_table); }
+    ~JohnsonPathSampler() { free2d(Ptd); }
     int sample_path(const int k, const set<int>& S0, const set<int>& S1,
         vector<pair<int, int>> &path) const;
     double get_Ptd(const int t, const int d) const { return Ptd[t][d]; }
 
 private:
     int N, M, Kmax, Dmax;
-    double **L_table;
     void compute_dp_table() ;
 };
  
@@ -43,7 +45,7 @@ int get_random_element(const set<int>& s) ;
 
 // 打印集合
 template<class T>
-void print_set(char *heading, const T& s, char *ending=NULL) {
+void print_set(const char *heading, const T& s, const char *ending=NULL) {
     if(heading) printf("%s{", heading);
     else        printf("{");
     for (auto it = s.begin(); it != s.end(); ) {
@@ -57,3 +59,5 @@ void print_set(char *heading, const T& s, char *ending=NULL) {
 void print_path(const vector<pair<int, int>>& path, const set<int>& S0) ;
 bool verify_path(const set<int> &S0, const set<int> &S1, 
             const vector<pair<int, int>>& path);
+
+#endif
