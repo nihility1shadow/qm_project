@@ -6,7 +6,11 @@
 void KondoPathSampler::compute_dp_table() {
   // initializing the DP table: (Kmax+1) x (Dmax+1)
   int Nvac = N - M;
-  double inv_NM = 1.0/(N-M), inv_M = 1.0/M;
+  if(Ptrans) {
+    free3d(Ptrans);
+    Ptd = NULL;
+    Qtd = NULL;
+  }
   Ptrans = array3d<double>(2, Kmax+1, Dmax+1);
   Ptd = Ptrans[0];
   Qtd = Ptrans[1];
@@ -15,34 +19,25 @@ void KondoPathSampler::compute_dp_table() {
   Ptd[0][0]  = 1;
   Qtd[0][0]  = 1;
 
-  //Ptd[1][1]  = inv_NM;
-  //Qtd[1][1]  = inv_M;
-
+  if(M == 0 || Nvac == 0) return;
+  double inv_NM = 1.0/Nvac, inv_M = 1.0/M;
 
   //filling the table
   for(int t=0; t<Kmax; t++) {
     if(t%2) {
       //update the even results based on the odd jumps(odd -> double)
       for(int d=0; d<=Dmax; d++) {
-        if(Ptd[t][d]) {
-          if(d) Ptd[t+1][d] += (M-d+1)*inv_M*Ptd[t][d-1]; 
-                Ptd[t+1][d  ] +=          d*inv_M*Ptd[t][d]; 
-        }
-        if(Qtd[t][d]) {
-          if(d) Qtd[t+1][d] +=   (d+1)*inv_NM*Qtd[t][d+1]; 
-                Qtd[t+1][d  ] +=   (Nvac-d)*inv_NM*Qtd[t][d]; 
-        }
+        if(d)      Ptd[t+1][d] += (M-d+1)*inv_M*Ptd[t][d-1];
+                   Ptd[t+1][d] +=        d*inv_M*Ptd[t][d];
+        if(d<Dmax) Qtd[t+1][d] += (d+1)*inv_NM*Qtd[t][d+1];
+                   Qtd[t+1][d] += (Nvac-d)*inv_NM*Qtd[t][d];
       }
     } else {
       for(int d=0; d<=Dmax; d++) {
-        if(Ptd[t][d]) {
-          if(d<Dmax) Ptd[t+1][d] += (d+1)*inv_NM*Ptd[t][d+1]; 
-                     Ptd[t+1][d  ] += (Nvac-d)*inv_NM*Ptd[t][d]; 
-        }
-        if(Qtd[t][d]) {
-          if(d<Dmax) Qtd[t+1][d] += (M-d+1)*inv_M*Qtd[t][d-1]; 
-                     Qtd[t+1][d  ] += d*inv_M*Qtd[t][d]; 
-        }
+        if(d<Dmax) Ptd[t+1][d] += (d+1)*inv_NM*Ptd[t][d+1];
+                   Ptd[t+1][d] += (Nvac-d)*inv_NM*Ptd[t][d];
+        if(d)      Qtd[t+1][d] += (M-d+1)*inv_M*Qtd[t][d-1];
+                   Qtd[t+1][d] +=        d*inv_M*Qtd[t][d];
       }
     }
   }
@@ -53,6 +48,7 @@ void KondoPathSampler::compute_dp_table() {
 //This function, coming from deepseek, works perfectly. 
 //What it actually calculates is the sum of 
 //probability of the nodes whose distance to the initial node is d after k moves.
+#if 0
 void KondoPathSampler::compute_dp_table_sum() {
   // 桶外元素总数
   int Nvac = N - M;
@@ -95,6 +91,12 @@ void KondoPathSampler::compute_dp_table_sum() {
       }
   }
 
+  return;
+}
+#endif
+
+void KondoPathSampler::compute_dp_table_sum() {
+  compute_dp_table();
   return;
 }
 
@@ -1202,4 +1204,3 @@ int main() {
   return 0;
 }
 #endif
-

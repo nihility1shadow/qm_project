@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.7.0 - Repair Kondo DP table construction
+
+Function:
+- Make the Kondo path sampler DP probabilities safe and consistent with the documented recurrence.
+
+Changes:
+- Remove incorrect guards that skipped valid transitions from adjacent distance states.
+- Fix `Qtd` boundary checks to avoid negative and out-of-range distance indexes.
+- Handle degenerate `M == 0` or `N-M == 0` cases before division.
+- Initialize sampler table pointers before building DP tables.
+- Add an include guard for `Kondo-path-sampler.h`.
+- Disable the malformed experimental `compute_dp_table_sum` body and replace it with a safe wrapper.
+
 ## v0.6.0 - Guard FFT plan destruction
 
 Function:

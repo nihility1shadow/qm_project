@@ -1,3 +1,6 @@
+#ifndef _YYY_KONDO_PATH_SAMPLER_
+#define _YYY_KONDO_PATH_SAMPLER_
+
 #include <vector>
 #include <set>
 #include <sys/time.h>
@@ -57,8 +60,9 @@ class KondoPathSampler {
     void compute_dp_table_sum();
   public :
     KondoPathSampler(const int n0, const int m0, const int km):
-      JPS_N1_M1(n0-1, m0-1, km),JPS_N1_M(n0-1, m0, km) {
-      N = n0; M = m0; Kmax=km; Dmax = min(M, N-M); 
+      N(n0), M(m0), Kmax(km), Dmax(min(m0, n0-m0)),
+      Ptd(NULL), Qtd(NULL), Ptrans(NULL),
+      JPS_N1_M1(n0-1, m0-1, km), JPS_N1_M(n0-1, m0, km) {
       compute_dp_table();
     }
     ~KondoPathSampler() { free3d(Ptrans); Ptd=NULL; Qtd=NULL; }
@@ -82,3 +86,5 @@ class KondoPathSampler {
         const set<int> &S1, vector<pair<int, int> > &path) const;
 #endif
 };
+
+#endif
