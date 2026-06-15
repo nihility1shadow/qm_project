@@ -22,12 +22,14 @@ class QMFFT1D {
       npt = 0;
       psi = NULL;
       kap = NULL;
+      fftpln_for = NULL;
+      fftpln_bck = NULL;
     }
     ~QMFFT1D(){
       free1d(psi);
       free1d(kap);
-      fftw_destroy_plan(fftpln_for);
-      fftw_destroy_plan(fftpln_bck);
+      if(fftpln_for) fftw_destroy_plan(fftpln_for);
+      if(fftpln_bck) fftw_destroy_plan(fftpln_bck);
     }
     QMFFT1D(const int xstep, const double x0, const double x1) {
       npt = xstep;

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.0 - Guard FFT plan destruction
+
+Function:
+- Make default-constructed `QMFFT1D` objects safe to destroy.
+
+Changes:
+- Initialize `fftpln_for` and `fftpln_bck` to `NULL` in the default constructor.
+- Destroy FFTW plans only when the plan handles are non-null.
+
 ## v0.5.0 - Restore Johnson path sampler
 
 Function:
