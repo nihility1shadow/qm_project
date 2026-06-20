@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.9.0 - Fix separated many-body normalization
+
+Function:
+- Add a corrected `SepMBpoisson` source version and verified output for the separated many-body estimator.
+
+Changes:
+- Add `ahm-mb-sep-v0.30.cpp` as a separate fixed version without overwriting the original file.
+- Keep Poisson compensation in `sclf` without embedding `1/ntraj`.
+- Apply the Monte Carlo average exactly once in the forward weight passed to `csproj`.
+- Keep the backward final-interval compensation as `sclf[j-offset]`; using full `sclf[j]` overcompensates and grows the trace.
+- Normalize printed observables by `trace = prb[t][0] / Nel`, then print the conserved electron count as `Nel`.
+- Fix `jc` and MPI reductions to use `nstep + 1` entries.
+- Set `Jmax` to `nstep + 1` so sampled jump arrays cannot overflow.
+- Fix the `nj_min` parity expression with explicit parentheses.
+- Add a `#PATCH_CHECK` marker to generated `ahm-sepmb` files so stale binaries are obvious.
+- Add verified output `ahm-sepmb-s10-n5-50000-v030.dat`.
+
 ## v0.8.0 - Harden array allocation helpers
 
 Function:
