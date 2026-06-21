@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.11.0 - Match SepMB output time grid to QM data
+
+Function:
+- Make separated many-body output use the full simulation time grid so it can be compared row-by-row with `ahm-qm-s10-n5.dat`.
+
+Changes:
+- Set `nwf = nstep` and `nbloc = 1` in `SepMBpoisson` instead of compressing output to 200 blocks.
+- Add `ahm-mb-sep-v0.31.cpp` as the full-time-grid snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.31 full-time-grid.
+
 ## v0.10.0 - Prepare server overwrite source
 
 Function:
