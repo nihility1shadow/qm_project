@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.14.0 - Use truthful sparse SepMB time labels
+
+Function:
+- Keep the fast sparse SepMB output while avoiding the misleading legacy compressed time labels.
+
+Changes:
+- Restore sparse output rows without interpolation.
+- Print the actual physical time as `t*nbloc*dt` instead of the legacy compressed `t*dt`.
+- Keep trace normalization, Poisson compensation, bounds, and parity fixes.
+- Add `ahm-mb-sep-v0.34.cpp` as the truthful sparse-time snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.34 truthful sparse-time.
+
 ## v0.13.0 - Restore legacy SepMB output grid
 
 Function:
