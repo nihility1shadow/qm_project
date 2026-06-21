@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.16.0 - Add early-window stride-one SepMB output
+
+Function:
+- Keep the requested SepMB output labels `0, 0.5, ..., 100` while reducing the backward projection interval to every simulation step in that early window.
+
+Changes:
+- Set `nbloc = 1` with `nwf = min(nstep, 200)` so the 201 output rows are actual early-time samples instead of sparse long-time samples relabeled as early times.
+- Guard projection writes with `j <= nwf*nbloc` so later forward steps do not write past the `prb` output array.
+- Add `ahm-mb-sep-v0.36.cpp` as the early-window stride-one snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.36 early-window stride-1`.
+
 ## v0.15.0 - Restore legacy-labeled SepMB output
 
 Function:
