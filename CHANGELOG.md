@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.15.0 - Restore legacy-labeled SepMB output
+
+Function:
+- Restore the old SepMB output labels `0, 0.5, ..., 100` while keeping the normalization and safety fixes.
+
+Changes:
+- Keep sparse output rows with `nwf = min(nstep, 200)` and `nbloc = nstep/nwf`.
+- Print the legacy compressed time label `t*dt` to match the old file shape.
+- Add `ahm-mb-sep-v0.35.cpp` as the legacy-labeled sparse-output snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.35 legacy-labeled sparse-output.
+
 ## v0.14.0 - Use truthful sparse SepMB time labels
 
 Function:
