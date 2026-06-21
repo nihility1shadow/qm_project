@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.10.0 - Prepare server overwrite source
+
+Function:
+- Provide the corrected separated many-body source under the original server filename while preserving the pre-v0.30 file for rollback.
+
+Changes:
+- Add `ahm-mb-sep.cpp` as a copy of the verified `ahm-mb-sep-v0.30.cpp` so it can directly overwrite the server file.
+- Add `archive/ahm-mb-sep-before-v030.cpp` containing the previous desktop/source version for explicit rollback reference.
+- Keep `ahm-mb-sep-v0.30.cpp` as a named fixed snapshot.
+
 ## v0.9.0 - Fix separated many-body normalization
 
 Function:
