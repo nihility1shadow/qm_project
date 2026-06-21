@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.12.0 - Fast dense SepMB output
+
+Function:
+- Keep the separated many-body estimator near the old runtime while writing the same dense `dt` time grid as the QM reference file.
+
+Changes:
+- Restore sparse expensive projection points with `nwf = min(nstep, 200)` and `nbloc = nstep/nwf`.
+- Write `nstep + 1` output rows at `j*dt` so the time column matches `ahm-qm-s10-n5.dat`.
+- Fill intermediate output rows by linear interpolation between neighboring normalized sparse projection points.
+- Add `ahm-mb-sep-v0.32.cpp` as the fast dense-output snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.32 fast-dense interpolated.
+
 ## v0.11.0 - Match SepMB output time grid to QM data
 
 Function:
@@ -8,7 +20,7 @@ Function:
 Changes:
 - Set `nwf = nstep` and `nbloc = 1` in `SepMBpoisson` instead of compressing output to 200 blocks.
 - Add `ahm-mb-sep-v0.31.cpp` as the full-time-grid snapshot.
-- Update the `#PATCH_CHECK` marker to `v0.31 full-time-grid.
+- Update the `#PATCH_CHECK` marker to `v0.31 full-time-grid`.
 
 ## v0.10.0 - Prepare server overwrite source
 
