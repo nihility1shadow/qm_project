@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.13.0 - Restore legacy SepMB output grid
+
+Function:
+- Restore the original sparse SepMB output shape while keeping the normalization and bounds fixes.
+
+Changes:
+- Remove the v0.32 dense interpolation output loop.
+- Output only `t = 0..nwf` sparse rows again, using the legacy `t*dt` time labels.
+- Keep `nwf = min(nstep, 200)` and `nbloc = nstep/nwf` so runtime stays close to the original SepMB version.
+- Add `ahm-mb-sep-v0.33.cpp` as the legacy sparse-output snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.33 legacy sparse-output.
+
 ## v0.12.0 - Fast dense SepMB output
 
 Function:
