@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.18.0 - Remove backward lambda double counting in SepMB
+
+Function:
+- Restore the magnitude of higher-order separated many-body orbital-occupation paths by avoiding an extra `lambda^nj_back` factor in the backward projection estimator.
+
+Changes:
+- Remove the `pow_lambda` table from `SepMBpoisson`.
+- Set the backward projection measure to start from `1.0` because `jumps_back` is already sampled with the lambda-dependent Poisson rate `sqrt(Nel*Nvac)*lambda*dt`.
+- Keep the Kondo distance-index correction from `v0.37`.
+- Add `ahm-mb-sep-v0.38.cpp` as the no-backward-lambda-double-count snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.38 no-backward-lambda-double-count`.
+
+## v0.17.0 - Fix Kondo distance index in SepMB projection
+
+Function:
+- Restore class-changing A/B Kondo path contributions so separated many-body orbital occupations can move away from the initial occupation pattern.
+
+Changes:
+- In `SepMBpoisson`, use `d_kondo = C.size() - (excited0 ^ excited)` when indexing the Kondo transition table.
+- Keep the minimum backward jump count as `2*d_kondo + class_flip`, equivalent to `2*C.size()-1` for A/B class-changing paths.
+- In `sample_path_A2B`, require the correct minimum step count `2*d-1` and reject empty target-difference sets before sampling.
+- Add `ahm-mb-sep-v0.37.cpp` as the Kondo-distance-index snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.37 kondo-distance-index`.
+
 ## v0.16.0 - Add early-window stride-one SepMB output
 
 Function:

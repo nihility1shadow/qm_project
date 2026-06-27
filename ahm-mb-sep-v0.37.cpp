@@ -104,10 +104,13 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   const double lambda = abs(cpl[1]),
                rate   = sqrtNel*sqrtNvac*lambda*dt;
   double p0, pt,  inv_ntraj = 1.0/ntraj,
+         *pow_lambda = array1d<double>(Jmax),
          *sclf       = array1d<double>(nstep+1);
   int    *jumps_back = array1d<int>(Jmax),
          idx;
+  pow_lambda[0] = 1.0;
   for(int j=0; j<=nstep;  j++) sclf[j]       = exp(rate*j);
+  for(int j=1; j<Jmax; j++) pow_lambda[j] = pow_lambda[j-1]*lambda;
 
   KondoPathSampler sampler(Norb, Nel, Jmax);
   Path_Sampler PS[2][2] = {
@@ -336,7 +339,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         for(int l : state) wgt *= expEndt[j-offset][l];
 
         if(!offset) offset = j;
-        double measure = 1.0; // jumps_back is already sampled with a lambda-dependent Poisson rate
+        double measure = pow_lambda[nj_back]; // the probability density is lambda^nj*exp(-lambda*t)
         measure *= sampler.get_Ptd(nj_back, d_kondo)*sclf[j-offset];
         if(excited_for != excited) {
           cerr<<"parity mismatch between the forward and backward path.\n";
@@ -372,7 +375,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     char fnm[256];
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
-    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.38 no-backward-lambda-double-count trace-normalized output active\n");
+    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.37 kondo-distance-index trace-normalized output active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
     for(int t=0; t<=nwf; t++)  {
