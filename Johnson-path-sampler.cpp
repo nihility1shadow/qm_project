@@ -9,6 +9,7 @@ double *log_table = NULL;
 namespace {
 
 int choose_from_set(const set<int>& s) {
+  if(s.empty()) return -1;
   int idx = static_cast<int>(drand48()*s.size());
   if(idx >= static_cast<int>(s.size())) idx = static_cast<int>(s.size()) - 1;
   auto it = s.begin();

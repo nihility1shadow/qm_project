@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.20.0 - Guard SepMB forward sampling and Johnson empty sets
+
+Function:
+- Prevent empty-set sampling and invalid forward electronic states from producing random segmentation faults in long SepMB runs.
+
+Changes:
+- Make Johnson `choose_from_set` return `-1` for empty sets instead of dereferencing `begin()`.
+- Check SepMB forward `state`/`vac` sizes and molecule-occupation parity before every forward jump.
+- Guard excited-state jumps against empty/invalid vacant orbital samples.
+- Guard ground-state jumps against empty/invalid occupied orbital samples.
+- Add a Kondo distance upper-bound check before reading the transition table.
+- Add `ahm-mb-sep-v0.40.cpp` as the guarded-forward-sampling snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.40 guarded-forward-sampling`.
+
 ## v0.19.0 - Guard SepMB backward state restoration
 
 Function:
