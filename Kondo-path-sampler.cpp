@@ -164,8 +164,9 @@ int KondoPathSampler::sample_path_A2B(const int ksteps, const set<int> &kS0, con
 #endif
 #endif
 
-  int d       = C.size(),
-      kmin    = d/2+1,
+  int d       = C.size();
+  if(d<=0) return -1;
+  int kmin    = 2*d-1,
       last_ex = get_random_element(C);
   const int JGsteps = ksteps/2;
 
