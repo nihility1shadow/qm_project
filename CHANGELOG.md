@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.19.0 - Guard SepMB backward state restoration
+
+Function:
+- Prevent rare invalid backward Kondo paths from corrupting the forward trajectory state and causing segmentation faults in long SepMB runs.
+
+Changes:
+- Save the forward `state` before backward projection and restore both `state` and `excited` after every projection attempt.
+- Validate the sampled backward path length and each jump before mutating the backward state.
+- Compute the fermionic sign with a checked iterator instead of dereferencing past the end of `state`.
+- Skip invalid backward projections after restoring the saved forward state.
+- Remove the incorrect `if(!offset) offset = j` rewrite so no-jump backward intervals still propagate for the full interval.
+- Add `ahm-mb-sep-v0.39.cpp` as the guarded-backward-state snapshot.
+- Update the `#PATCH_CHECK` marker to `v0.39 guarded-backward-state-restore`.
+
 ## v0.18.0 - Remove backward lambda double counting in SepMB
 
 Function:
