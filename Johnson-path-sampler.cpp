@@ -106,6 +106,9 @@ int JohnsonPathSampler::sample_path(const int k, const set<int>& S0, const set<i
       in  = choose_from_set(neither);
     }
 
+    if(out < 1 || out > N || in < 1 || in > N) return -6;
+    if(current.find(out) == current.end() || current.find(in) != current.end()) return -7;
+
     current.erase(out);
     current.insert(in);
     path.push_back({out, in});

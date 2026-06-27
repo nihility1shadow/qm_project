@@ -66,8 +66,14 @@ class KondoPathSampler {
       compute_dp_table();
     }
     ~KondoPathSampler() { free3d(Ptrans); Ptd=NULL; Qtd=NULL; }
-    double get_Ptd(const int k, const int d) {return Ptd[k][d];}
-    double get_Qtd(const int k, const int d) {return Qtd[k][d];}
+    double get_Ptd(const int k, const int d) {
+      if(k < 0 || k > Kmax || d < 0 || d > Dmax) return 0.0;
+      return Ptd[k][d];
+    }
+    double get_Qtd(const int k, const int d) {
+      if(k < 0 || k > Kmax || d < 0 || d > Dmax) return 0.0;
+      return Qtd[k][d];
+    }
     int sample_path_A2A(const int k, const set<int> &S0, const set<int> &S1, 
         vector<pair<int, int> > &path) const;
     int sample_path_A2B(const int k, const set<int> &S0, const set<int> &S1, 

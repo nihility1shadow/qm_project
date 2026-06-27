@@ -113,6 +113,7 @@ int KondoPathSampler::sample_path_A2A(const int ksteps, const set<int> &kS0, con
 #endif 
 
   path.clear();
+  if(ksteps < 0 || ksteps > Kmax) return -1;
   set<int> S0=kS0, S1=kS1;
   S0.erase(0);
   S1.erase(0);
@@ -131,6 +132,8 @@ int KondoPathSampler::sample_path_A2A(const int ksteps, const set<int> &kS0, con
   if(JGpath.size() != JGsteps) return -2;
 
   for(int k=0; k<JGsteps; k++) {
+    if(JGpath[k].first <= 0 || JGpath[k].first >= N ||
+       JGpath[k].second <= 0 || JGpath[k].second >= N) return -3;
     path.push_back({0, JGpath[k].second});
     path.push_back({JGpath[k].first, 0});
   }
@@ -151,6 +154,7 @@ int KondoPathSampler::sample_path_A2B(const int ksteps, const set<int> &kS0, con
 #endif 
 
   path.clear();
+  if(ksteps < 0 || ksteps > Kmax) return -1;
   set<int> S0=kS0, S1=kS1;
   S0.erase(0);
 
@@ -194,6 +198,8 @@ int KondoPathSampler::sample_path_A2B(const int ksteps, const set<int> &kS0, con
 #endif
 
   for(int k=0; k<JGsteps; k++) {
+    if(JGpath[k].first <= 0 || JGpath[k].first >= N ||
+       JGpath[k].second <= 0 || JGpath[k].second >= N) return -3;
     path.push_back({0, JGpath[k].second});
     path.push_back({JGpath[k].first, 0});
   }
