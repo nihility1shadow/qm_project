@@ -362,19 +362,6 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           continue;
         }
 
-        // The odd Kondo sector is a virtual charge-transfer sector in the
-        // separated estimator.  Counting it directly as a diagonal population
-        // makes orbital 0 deplete and overpopulates high bath orbitals.
-        // Match the exact many-body observable by projecting populations only
-        // after the path has returned to the initial electronic class.
-        if(excited_for != excited0) {
-          alp = alp_for;
-          wgt = wgt_for;
-          state = state_for;
-          excited = excited_for;
-          continue;
-        }
-
         //propagate the time jump_bck[nj_back]->nstep;
         if(excited) {
           // It is in the excited state, propagation with 1/2 m w^2 (x-delx)^2
@@ -438,7 +425,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     char fnm[256];
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
-    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.43 even-sector-observable-projection trace-normalized output active\n");
+    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.42 endpoint-kondo-probabilities trace-normalized output active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
     for(int t=0; t<=nwf; t++)  {

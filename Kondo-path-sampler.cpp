@@ -1,10 +1,21 @@
 #include "./Kondo-path-sampler.h"
 
+namespace {
+
+double kondo_binom(const int n, const int k) {
+  if(k < 0 || k > n) return 0.0;
+  int kk = k < n-k ? k : n-k;
+  double r = 1.0;
+  for(int j=1; j<=kk; j++) r *= (n-kk+j)*1.0/j;
+  return r;
+}
+
+}
+
 /*
  * this function works now.
  */
 void KondoPathSampler::compute_dp_table() {
-  // initializing the DP table: (Kmax+1) x (Dmax+1)
   int Nvac = N - M;
   if(Ptrans) {
     free3d(Ptrans);
@@ -15,30 +26,53 @@ void KondoPathSampler::compute_dp_table() {
   Ptd = Ptrans[0];
   Qtd = Ptrans[1];
 
-  // boundary condition: when t=0, only d=0 has probability of 1
-  Ptd[0][0]  = 1;
-  Qtd[0][0]  = 1;
+  Ptd[0][0] = 1.0;
+  Qtd[0][0] = 1.0;
 
   if(M == 0 || Nvac == 0) return;
-  double inv_NM = 1.0/Nvac, inv_M = 1.0/M;
 
-  //filling the table
+  const double inv_M = 1.0/M, inv_Nvac = 1.0/Nvac;
+
   for(int t=0; t<Kmax; t++) {
     if(t%2) {
-      //update the even results based on the odd jumps(odd -> double)
+      // P: A-start odd B-distance -> even A-distance.
+      // B_d returns to A_d by removing a newly added orbital,
+      // or to A_{d+1} by removing one of the original occupied orbitals.
       for(int d=0; d<=Dmax; d++) {
-        if(d)      Ptd[t+1][d] += (M-d+1)*inv_M*Ptd[t][d-1];
-                   Ptd[t+1][d] +=        d*inv_M*Ptd[t][d];
-        if(d<Dmax) Qtd[t+1][d] += (d+1)*inv_NM*Qtd[t][d+1];
-                   Qtd[t+1][d] += (Nvac-d)*inv_NM*Qtd[t][d];
+        if(d + 1 <= M) Ptd[t+1][d] += (d+1)*inv_M*Ptd[t][d];
+        if(d > 0 && d <= M) Ptd[t+1][d] += (M-d)*inv_M*Ptd[t][d-1];
+
+        // Q: B-start odd A-distance -> even B-distance.
+        if(d + 1 <= Nvac) Qtd[t+1][d] += (d+1)*inv_Nvac*Qtd[t][d];
+        if(d > 0 && d <= Nvac) Qtd[t+1][d] += (Nvac-d)*inv_Nvac*Qtd[t][d-1];
       }
     } else {
+      // P: A-start even A-distance -> odd B-distance.
       for(int d=0; d<=Dmax; d++) {
-        if(d<Dmax) Ptd[t+1][d] += (d+1)*inv_NM*Ptd[t][d+1];
-                   Ptd[t+1][d] += (Nvac-d)*inv_NM*Ptd[t][d];
-        if(d)      Qtd[t+1][d] += (M-d+1)*inv_M*Qtd[t][d-1];
-                   Qtd[t+1][d] +=        d*inv_M*Qtd[t][d];
+        if(d <= Nvac) Ptd[t+1][d] += (Nvac-d)*inv_Nvac*Ptd[t][d];
+        if(d < Dmax) Ptd[t+1][d] += (d+1)*inv_Nvac*Ptd[t][d+1];
+
+        // Q: B-start even B-distance -> odd A-distance.
+        if(d <= M) Qtd[t+1][d] += (M-d)*inv_M*Qtd[t][d];
+        if(d < Dmax) Qtd[t+1][d] += (d+1)*inv_M*Qtd[t][d+1];
       }
+    }
+  }
+
+  // Convert distance-class probabilities into probabilities for one concrete endpoint.
+  // This is what the separated projection needs for a fixed target determinant.
+  const int NA = M - 1;
+  const int NBvac = N - M - 1;
+  for(int t=0; t<=Kmax; t++) {
+    for(int d=0; d<=Dmax; d++) {
+      double pdeg = (t%2 == 0)
+        ? kondo_binom(NA, d)*kondo_binom(Nvac, d)
+        : kondo_binom(NA, d)*kondo_binom(Nvac, d+1);
+      double qdeg = (t%2 == 0)
+        ? kondo_binom(M, d)*kondo_binom(NBvac, d)
+        : kondo_binom(M, d+1)*kondo_binom(NBvac, d);
+      Ptd[t][d] = pdeg > 0.0 ? Ptd[t][d]/pdeg : 0.0;
+      Qtd[t][d] = qdeg > 0.0 ? Qtd[t][d]/qdeg : 0.0;
     }
   }
 
