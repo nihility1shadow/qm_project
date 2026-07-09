@@ -196,8 +196,46 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
   // the initial average
   int nwf = nstep > 200 ? 200 : nstep;
-  int nbloc = 10;
-  int nmeas = (nwf+nbloc-1)/nbloc;
+  double gap = 0.0;
+  for(int a : S0) {
+    for(int b=0; b<Norb; b++) {
+      if(S0.find(b) != S0.end()) continue;
+      double de = fabs(En[a]-En[b]);
+      if(de > 1.e-12 && (gap == 0.0 || de < gap)) gap = de;
+    }
+  }
+  if(gap == 0.0) {
+    for(int a=0; a<Norb; a++) {
+      for(int b=a+1; b<Norb; b++) {
+        double de = fabs(En[a]-En[b]);
+        if(de > 1.e-12 && (gap == 0.0 || de < gap)) gap = de;
+      }
+    }
+  }
+  const int period_steps = gap > 0.0 ? max(1, (int)(2.0*acos(-1.0)/(gap*dt)+0.999999999999)) : nwf;
+  const int dense_end    = min(nwf, max(16, period_steps/8));
+  const int mid_end      = min(nwf, max(dense_end, period_steps/4));
+  const int slow_end     = min(nwf, max(mid_end, period_steps/2));
+  const int stride_mid   = max(1, period_steps/128);
+  const int stride_slow  = max(stride_mid, period_steps/64);
+  const int stride_late  = max(stride_slow, period_steps/32);
+  vector<int> measure_steps;
+  measure_steps.push_back(0);
+  int last_step = 0;
+  for(int j=1; j<=nwf; ) {
+    int stride = j <= dense_end ? 1 : (j <= mid_end ? stride_mid :
+                 (j <= slow_end ? stride_slow : stride_late));
+    if(j > last_step) {
+      measure_steps.push_back(j);
+      last_step = j;
+    }
+    j += stride;
+  }
+  if(measure_steps.back() != nwf) measure_steps.push_back(nwf);
+  int nmeas = measure_steps.size()-1;
+  int *measure_slot = array1d<int>(nwf+1);
+  for(int j=0; j<=nwf; j++) measure_slot[j] = -1;
+  for(int j=0; j<=nmeas; j++) measure_slot[measure_steps[j]] = j;
   double **prb = array2d<double>(nmeas+1, Norb+3);
   int excited0 = S0.find(0) == S0.end() ? 0 : 1,
       Jmax     = nstep + 1;
@@ -368,8 +406,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       for(int l : state) wgt *= expEndt1[l];
       jc[nj]++;
 
-      if(j<=nwf && (j%nbloc==0 || j==nwf)) {
-        int iprb = (j==nwf && j%nbloc) ? nmeas : j/nbloc;
+      int iprb = j <= nwf ? measure_slot[j] : -1;
+      if(iprb >= 0) {
         int excited_for = excited;
         // the distance between S0 and state in Johnson graph.
         set<int> C;
@@ -563,25 +601,17 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     char fnm[256];
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
-    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.56 fullmb-kondo stride10-interpolated active\n");
+    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.58 fullmb-kondo adaptive-interpolated active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
+    fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d\n", gap, period_steps, nmeas);
     double *rlt = array1d<double>(Norb+3);
+    int il = 0;
     for(int t=0; t<=nwf; t++)  {
-      int il = t/nbloc,
-          ir = il,
-          tl = il*nbloc,
-          tr = tl;
-      if(t==nwf && t%nbloc) {
-        il = ir = nmeas;
-      } else if(t%nbloc) {
-        ir = il + 1;
-        tr = ir*nbloc;
-        if(ir >= nmeas) {
-          ir = nmeas;
-          tr = nwf;
-        }
-      }
+      while(il+1 <= nmeas && measure_steps[il+1] < t) il++;
+      int ir = il+1 <= nmeas ? il+1 : il,
+          tl = measure_steps[il],
+          tr = measure_steps[ir];
       if(il == ir || tr <= tl) {
         for(int k=0; k<Norb+3; k++) rlt[k] = prb[il][k];
       } else {
@@ -612,6 +642,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
   free3d(back_accept);
   free2d(prb);
+  free1d(measure_slot);
   free1d(sclf);
   free1d(jc);
 
