@@ -10,6 +10,12 @@ double kondo_binom(const int n, const int k) {
   return r;
 }
 
+int diff_size_no_zero(const set<int> &a, const set<int> &b) {
+  int n = 0;
+  for(int x : a) if(x != 0 && b.find(x) == b.end()) n++;
+  return n;
+}
+
 }
 
 /*
@@ -134,122 +140,122 @@ void KondoPathSampler::compute_dp_table_sum() {
   return;
 }
 
-int KondoPathSampler::sample_path_A2A(const int ksteps, const set<int> &kS0, const set<int> &kS1,
-        vector<pair<int, int> > &path) const {
-#ifdef __ENABLE_CHECK_
-   if(kS0.find(0) == kS0.end() || 
-      kS1.find(0) == kS1.end() || 
-      ksteps%2) {
-     cerr<<"KondoPathSampler::sample_path_A2A_uniform : \n";
-     cerr<<"    S0 and S1 should be A nodes and ksteps should be even"<<endl;
-     abort();
-   }
-#endif 
+double KondoPathSampler::endpoint_probability(const set<int> &current,
+    const set<int> &target, const int remaining) const {
+  if(remaining < 0 || remaining > Kmax) return 0.0;
+  if((int)current.size() != M || (int)target.size() != M) return 0.0;
 
-  path.clear();
-  if(ksteps < 0 || ksteps > Kmax) return -1;
-  set<int> S0=kS0, S1=kS1;
-  S0.erase(0);
-  S1.erase(0);
+  const bool current_A = current.find(0) != current.end();
+  const bool target_A  = target.find(0)  != target.end();
+  if(((remaining%2) == 0) != (current_A == target_A)) return 0.0;
 
-  vector<pair<int, int> > JGpath;
-  const int JGsteps = ksteps/2;
-  int info = JPS_N1_M1.sample_path(JGsteps, S0, S1, JGpath);
-#if 0
-#ifdef __ENABLE_CHECK_
-  print_path(JGpath, S0);
-  verify_path(S0, S1, JGpath);
-#endif
-#endif
+  const int current_only = diff_size_no_zero(current, target);
+  const int target_only  = diff_size_no_zero(target, current);
+  int d = -1;
 
-  if(info) return info;
-  if(JGpath.size() != JGsteps) return -2;
-
-  for(int k=0; k<JGsteps; k++) {
-    if(JGpath[k].first <= 0 || JGpath[k].first >= N ||
-       JGpath[k].second <= 0 || JGpath[k].second >= N) return -3;
-    path.push_back({0, JGpath[k].second});
-    path.push_back({JGpath[k].first, 0});
+  if(current_A) {
+    if(target_A) {
+      if(current_only != target_only) return 0.0;
+      d = current_only;
+    } else {
+      if(target_only != current_only + 1) return 0.0;
+      d = current_only;
+    }
+    return (d >= 0 && d <= Dmax) ? Ptd[remaining][d] : 0.0;
   }
 
-  return 0;
+  if(target_A) {
+    if(current_only != target_only + 1) return 0.0;
+    d = target_only;
+  } else {
+    if(current_only != target_only) return 0.0;
+    d = current_only;
+  }
+  return (d >= 0 && d <= Dmax) ? Qtd[remaining][d] : 0.0;
+}
+
+int KondoPathSampler::sample_path_direct(const int ksteps, const set<int> &S0,
+    const set<int> &S1, vector<pair<int, int> > &path) const {
+  path.clear();
+  if(ksteps < 0 || ksteps > Kmax) return -1;
+  if((int)S0.size() != M || (int)S1.size() != M) return -2;
+  if(endpoint_probability(S0, S1, ksteps) <= 0.0) return -3;
+
+  set<int> current = S0;
+  for(int remaining=ksteps; remaining>0; remaining--) {
+    struct Candidate { int first, second; double weight; };
+    vector<Candidate> candidates;
+    double total = 0.0;
+
+    if(current.find(0) != current.end()) {
+      for(int y=1; y<N; y++) {
+        if(current.find(y) != current.end()) continue;
+        set<int> next = current;
+        next.erase(0);
+        next.insert(y);
+        double w = endpoint_probability(next, S1, remaining-1);
+        if(w > 0.0) {
+          candidates.push_back({0, y, w});
+          total += w;
+        }
+      }
+    } else {
+      for(int x : current) {
+        if(x == 0) continue;
+        set<int> next = current;
+        next.erase(x);
+        next.insert(0);
+        double w = endpoint_probability(next, S1, remaining-1);
+        if(w > 0.0) {
+          candidates.push_back({x, 0, w});
+          total += w;
+        }
+      }
+    }
+
+    if(total <= 0.0 || candidates.empty()) return -4;
+    double r = drand48()*total;
+    const Candidate *choice = &candidates.back();
+    for(const Candidate &cand : candidates) {
+      if(r < cand.weight) {
+        choice = &cand;
+        break;
+      }
+      r -= cand.weight;
+    }
+
+    if(current.find(choice->first) == current.end() ||
+       current.find(choice->second) != current.end()) return -6;
+    current.erase(choice->first);
+    current.insert(choice->second);
+    path.push_back({choice->first, choice->second});
+  }
+
+  return current == S1 ? 0 : -5;
+}
+
+int KondoPathSampler::sample_path_A2A(const int ksteps, const set<int> &kS0, const set<int> &kS1,
+        vector<pair<int, int> > &path) const {
+  if(kS0.find(0) == kS0.end() || kS1.find(0) == kS1.end() || ksteps%2) return -1;
+  return sample_path_direct(ksteps, kS0, kS1, path);
 }
 
 int KondoPathSampler::sample_path_A2B(const int ksteps, const set<int> &kS0, const set<int> &kS1,
         vector<pair<int, int> > &path) const {
-#ifdef __ENABLE_CHECK_
-   if(kS0.find(0) == kS0.end() || 
-      kS1.find(0) != kS1.end() || 
-      ksteps%2==0) {
-     cerr<<"KondoPathSampler::sample_path_A2B : \n";
-     cerr<<"    S0 should be an A and S1 should be a B and ksteps should be odd"<<endl;
-     abort();
-   }
-#endif 
-
-  path.clear();
-  if(ksteps < 0 || ksteps > Kmax) return -1;
-  set<int> S0=kS0, S1=kS1;
-  S0.erase(0);
-
-  set<int> C;
-  // C = S1 - S0
-  set_difference(S1.begin(), S1.end(), S0.begin(), S0.end(), 
-                 inserter(C, C.begin()));
-#if 0
-#ifdef __ENABLE_CHECK_
-  print_set("C=S1-S0 :", C, "\n");
-#endif
-#endif
-
-  int d       = C.size();
-  if(d<=0) return -1;
-  int kmin    = 2*d-1,
-      last_ex = get_random_element(C);
-  const int JGsteps = ksteps/2;
-
-  if(ksteps<kmin) return -1;
-
-  S1.erase(last_ex);
-#if 0
-#ifdef __ENABLE_CHECK_
-  printf("getting %d from C\n", last_ex);
-  print_set("S0 for JG :", S0, "\n");
-  print_set("S1 for JG :", S1, "\n");
-#endif
-#endif
-
-  vector<pair<int, int> > JGpath;
-  int info = JPS_N1_M1.sample_path(JGsteps, S0, S1, JGpath);
-  if(info) return info;
-  if(JGpath.size() != JGsteps) return -2;
-
-#if 0
-#ifdef __ENABLE_CHECK_
-  print_path(JGpath, S0);
-  verify_path(S0, S1, JGpath);
-#endif
-#endif
-
-  for(int k=0; k<JGsteps; k++) {
-    if(JGpath[k].first <= 0 || JGpath[k].first >= N ||
-       JGpath[k].second <= 0 || JGpath[k].second >= N) return -3;
-    path.push_back({0, JGpath[k].second});
-    path.push_back({JGpath[k].first, 0});
-  }
-  path.push_back({0, last_ex});
-
-  return 0;
+  if(kS0.find(0) == kS0.end() || kS1.find(0) != kS1.end() || ksteps%2==0) return -1;
+  return sample_path_direct(ksteps, kS0, kS1, path);
 }
  
 int KondoPathSampler::sample_path_B2A(const int ksteps, const set<int> &kS0, const set<int> &kS1,
         vector<pair<int, int> > &path) const {
-  return -1;
+  if(kS0.find(0) != kS0.end() || kS1.find(0) == kS1.end() || ksteps%2==0) return -1;
+  return sample_path_direct(ksteps, kS0, kS1, path);
 }
 
 int KondoPathSampler::sample_path_B2B(const int ksteps, const set<int> &kS0, const set<int> &kS1,
         vector<pair<int, int> > &path) const {
-  return -1;
+  if(kS0.find(0) != kS0.end() || kS1.find(0) != kS1.end() || ksteps%2) return -1;
+  return sample_path_direct(ksteps, kS0, kS1, path);
 }
 
 #if 1

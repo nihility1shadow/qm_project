@@ -56,6 +56,10 @@ class KondoPathSampler {
     double ***Ptrans;
     JohnsonPathSampler JPS_N1_M1; //N-1,M-1,Kmax, for A2A
     JohnsonPathSampler JPS_N1_M; //N-1,M,Kmax, for B2B
+    double endpoint_probability(const set<int> &current, const set<int> &target,
+        const int remaining) const;
+    int sample_path_direct(const int k, const set<int> &S0, const set<int> &S1,
+        vector<pair<int, int> > &path) const;
     void compute_dp_table();
     void compute_dp_table_sum();
   public :

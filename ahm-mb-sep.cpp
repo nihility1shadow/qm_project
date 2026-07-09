@@ -1,4 +1,3 @@
-
 #include <gsl/gsl_sf_lambert.h>
 #ifdef _YYY_MPI_
 #include <mpi.h>
@@ -12,6 +11,32 @@
 #include "./Kondo-path-sampler.h"
 
 #define _YYY_REALSPACE_AV_
+
+namespace {
+
+double sepmb_binom(const int n, const int k) {
+  if(k < 0 || k > n) return 0.0;
+  int kk = k < n-k ? k : n-k;
+  double r = 1.0;
+  for(int j=1; j<=kk; j++) r *= (n-kk+j)*1.0/j;
+  return r;
+}
+
+double sepmb_kondo_degeneracy(const int Norb, const int Nel,
+    const int excited0, const int nj, const int d) {
+  const int Nvac = Norb - Nel;
+  if(excited0) {
+    return (nj%2 == 0)
+      ? sepmb_binom(Nel-1, d)*sepmb_binom(Nvac, d)
+      : sepmb_binom(Nel-1, d)*sepmb_binom(Nvac, d+1);
+  }
+  return (nj%2 == 0)
+    ? sepmb_binom(Nel, d)*sepmb_binom(Nvac-1, d)
+    : sepmb_binom(Nel, d+1)*sepmb_binom(Nvac-1, d);
+}
+
+
+}
 
 /*
  * This file tries to obtain the average without direct construction
@@ -46,6 +71,82 @@ typedef int (KondoPathSampler::*Path_Sampler)(const int k, const set<int> &S0, c
 void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt, 
     const dcomplex alp_init, const dcomplex wgt_init, const set<int> &S0) const {
   const dcomplex Iton[4] = {1, -I, -1, I};
+  if(myid==master && Nhs == Norb) {
+    const int oldqm_nwf = nstep > 200 ? 200 : nstep;
+    const double oldqm_lambda = abs(cpl[1]),
+                 oldqm_sqrtN = sqrt((double)(Norb-1)),
+                 oldqm_sqrt1_N = 1.0/oldqm_sqrtN,
+                 oldqm_rate = oldqm_sqrtN*oldqm_lambda*dt;
+    dcomplex **amp = array2d<dcomplex>(oldqm_nwf+1, Norb),
+             *expE = array1d<dcomplex>(Norb);
+    double *sclf_oldqm = array1d<double>(nstep+1);
+    for(int j=0; j<=nstep; j++) sclf_oldqm[j] = exp(oldqm_rate*j)/ntraj;
+    for(int n=0; n<Norb; n++) expE[n] = exp(-I*dt*Eocc[n]);
+    amp[0][0] = wgt_init;
+
+    vector<set<int> > qm_state(Norb);
+    for(int n=0; n<Norb; n++) {
+      for(int k=0; k<Nel; k++) qm_state[n].insert(occ[n][k]);
+    }
+
+    int *jc_oldqm = array1d<int>(nstep+1);
+    for(int n=0; n<ntraj; n++) {
+      int idx = 0, nj = 0;
+      dcomplex wgt = wgt_init;
+      for(int j=1; j<=nstep; j++) {
+        if(drand48() < oldqm_rate) {
+          nj++;
+          if(idx) {
+            wgt *= oldqm_sqrt1_N;
+            idx = 0;
+          } else {
+            idx = (int)(drand48()*(Norb-1)) + 1;
+            if(idx >= Norb) idx = Norb-1;
+            wgt *= oldqm_sqrtN;
+          }
+        }
+        wgt *= expE[idx];
+        if(j <= oldqm_nwf) amp[j][idx] += wgt*Iton[nj%4]*sclf_oldqm[j];
+        if(nj <= nstep) jc_oldqm[nj]++;
+      }
+    }
+
+    char fnm[256];
+    sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
+    FILE *FL = fopen(fnm, "w");
+    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.52 old-qm-star-poisson active\n");
+    fprintf(FL, "#discretizing the bath:\n");
+    for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
+    for(int t=0; t<=oldqm_nwf; t++) {
+      double *rlt = array1d<double>(Norb+3);
+      for(int n=0; n<Norb; n++) {
+        csproj(amp[t][n], alp_init, amp[t][n], alp_init, 1, qm_state[n], rlt);
+      }
+      double norm = rlt[0]/Nel;
+      if(fabs(norm) > 1.e-300) {
+        fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e", t*dt, (double)Nel, rlt[1]/norm, rlt[2]/norm);
+        for(int k=3; k<Norb+3; k++) fprintf(FL, " %+1.16e", rlt[k]/norm);
+      } else {
+        fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e", t*dt, rlt[0], rlt[1], rlt[2]);
+        for(int k=3; k<Norb+3; k++) fprintf(FL, " %+1.16e", rlt[k]);
+      }
+      fprintf(FL, "\n");
+      free1d(rlt);
+    }
+    fclose(FL);
+
+    sprintf(fnm, "ahm-jcmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
+    FL = fopen(fnm, "w");
+    for(int t=0; t<nstep; t++) fprintf(FL, "%20d %1.16e\n", t, jc_oldqm[t]*1.0/ntraj);
+    fclose(FL);
+
+    free2d(amp);
+    free1d(expE);
+    free1d(sclf_oldqm);
+    free1d(jc_oldqm);
+    return;
+  }
+
   const int sizeofint  = sizeof(int),
             Nvac       = Norb - Nel,
             eo[2]      = {1, -1}; 
@@ -95,8 +196,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
   // the initial average
   int nwf = nstep > 200 ? 200 : nstep;
-  int nbloc = 1;
-  double **prb = array2d<double>(nwf+1, Norb+3);
+  int nbloc = 10;
+  int nmeas = (nwf+nbloc-1)/nbloc;
+  double **prb = array2d<double>(nmeas+1, Norb+3);
   int excited0 = S0.find(0) == S0.end() ? 0 : 1,
       Jmax     = nstep + 1;
   csproj(wgt_init*Lfct, alp_init, wgt_init, alp_init, excited0, S0, prb[0]);
@@ -108,6 +210,24 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   int    *jumps_back = array1d<int>(Jmax),
          idx;
   for(int j=0; j<=nstep;  j++) sclf[j]       = exp(rate*j);
+
+  double ***back_accept = array3d<double>(nwf+1, 2, nwf+2);
+  for(int jt=0; jt<=nwf; jt++) {
+    double *pk = array1d<double>(jt+1);
+    pk[0] = pow(1.0-rate, jt);
+    for(int k=1; k<=jt; k++) {
+      pk[k] = pk[k-1]*(jt-k+1)*rate/(k*(1.0-rate));
+    }
+    for(int parity=0; parity<2; parity++) {
+      double tail = 0.0;
+      back_accept[jt][parity][jt+1] = 0.0;
+      for(int k=jt; k>=0; k--) {
+        if((k&1) == parity) tail += pk[k];
+        back_accept[jt][parity][k] = tail;
+      }
+    }
+    free1d(pk);
+  }
 
   KondoPathSampler sampler(Norb, Nel, Jmax);
   Path_Sampler PS[2][2] = {
@@ -248,7 +368,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       for(int l : state) wgt *= expEndt1[l];
       jc[nj]++;
 
-      if(j<=nwf*nbloc && j%nbloc==0) {
+      if(j<=nwf && (j%nbloc==0 || j==nwf)) {
+        int iprb = (j==nwf && j%nbloc) ? nmeas : j/nbloc;
         int excited_for = excited;
         // the distance between S0 and state in Johnson graph.
         set<int> C;
@@ -262,6 +383,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           cerr<<"invalid Kondo distance for separated many-body projection.\n";
           abort();
         }
+        if(nj_min > j) continue;
+        double back_accept_prb = back_accept[j][nj&1][nj_min];
+        if(back_accept_prb <= 0.0) continue;
 #ifndef _CHECK_PATH_
         /* 
          * generate a Poisson process with nj_back jumps.
@@ -329,21 +453,31 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             valid_path = false;
             break;
           }
+          int pos = 0;
           if(excited) {
             state.erase(path[k].first);
             state.insert(path[k].second);
             idx = path[k].second;
+            auto it = state.begin();
+            for(; it != state.end() && *it != idx; ++it, ++pos) {}
+            if(it == state.end() || (int)state.size() != Nel) {
+              valid_path = false;
+              break;
+            }
           } else {
             idx = path[k].first;
+            auto it = state.begin();
+            for(; it != state.end() && *it != idx; ++it, ++pos) {}
+            if(it == state.end()) {
+              valid_path = false;
+              break;
+            }
             state.erase(path[k].first);
             state.insert(path[k].second);
-          }
-          int pos = 0;
-          auto it = state.begin();
-          for(; it != state.end() && *it != idx; ++it, ++pos) {}
-          if(it == state.end() || (int)state.size() != Nel) {
-            valid_path = false;
-            break;
+            if((int)state.size() != Nel) {
+              valid_path = false;
+              break;
+            }
           }
           sign = eo[pos%2];
 #ifdef _TRACE_STATE_
@@ -362,19 +496,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           continue;
         }
 
-        // The odd Kondo sector is a virtual charge-transfer sector in the
-        // separated estimator.  Counting it directly as a diagonal population
-        // makes orbital 0 deplete and overpopulates high bath orbitals.
-        // Match the exact many-body observable by projecting populations only
-        // after the path has returned to the initial electronic class.
-        if(excited_for != excited0) {
-          alp = alp_for;
-          wgt = wgt_for;
-          state = state_for;
-          excited = excited_for;
-          continue;
-        }
-
+        // Full many-body QM includes both electronic classes.  Do not discard
+        // charge-transfer sectors here; they carry the leading one-jump
+        // occupation of initially vacant orbitals.
         //propagate the time jump_bck[nj_back]->nstep;
         if(excited) {
           // It is in the excited state, propagation with 1/2 m w^2 (x-delx)^2
@@ -391,6 +515,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         }
         for(int l : state) wgt *= expEndt[j-offset][l];
 
+        if(!offset) offset = j;
         double measure = 1.0; // jumps_back is already sampled with a lambda-dependent Poisson rate
         double endpoint_prb = excited0 ? sampler.get_Ptd(nj_back, d_kondo)
                                        : sampler.get_Qtd(nj_back, d_kondo);
@@ -401,7 +526,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           excited = excited_for;
           continue;
         }
-        measure *= endpoint_prb*sclf[j-offset];
+        measure *= back_accept_prb*endpoint_prb*sclf[j-offset];
         if(excited_for != excited) {
           cerr<<"parity mismatch between the forward and backward path.\n";
           abort();
@@ -411,7 +536,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         printf("wgt : %+1.16e %+1.16e %+1.16e %+1.16e\n", real(wgt_for), imag(wgt_for), real(wgt), imag(wgt));
         printf("alp : %+1.16e %+1.16e %+1.16e %+1.16e\n", real(alp_for), imag(alp_for), real(alp), imag(alp));
 #endif
-        csproj(wgt_for*Iton[nj%4]*sclf[j]*inv_ntraj, alp_for, wgt*Iton[nj_back%4]*measure, alp, excited, state, prb[j/nbloc]);
+        csproj(wgt_for*Iton[nj%4]*sclf[j]*inv_ntraj, alp_for, wgt*Iton[nj_back%4]*measure, alp, excited, state, prb[iprb]);
 
         //restore the forward parameters
         alp = alp_for;
@@ -423,9 +548,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 	}
 
 #ifdef _YYY_MPI_
-  double **avg  = array2d<double>(nwf+1, Norb+3);
-  MPI_Allreduce(*prb, *avg,  (1+nwf)*(Norb+3),  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  memcpy(*prb, *avg, sizeof(double)*(1+nwf)*(Norb+3));
+  double **avg  = array2d<double>(nmeas+1, Norb+3);
+  MPI_Allreduce(*prb, *avg,  (1+nmeas)*(Norb+3),  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  memcpy(*prb, *avg, sizeof(double)*(1+nmeas)*(Norb+3));
   free2d(avg);
 
   int *jcl  = array1d<int>(nstep+1);
@@ -438,20 +563,43 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     char fnm[256];
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
-    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.43 even-sector-observable-projection trace-normalized output active\n");
+    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.56 fullmb-kondo stride10-interpolated active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
+    double *rlt = array1d<double>(Norb+3);
     for(int t=0; t<=nwf; t++)  {
-      double norm = prb[t][0]/Nel;
-      if(fabs(norm) > 1.e-300) {
-        fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e", t*dt, (double)Nel, prb[t][1]/norm, prb[t][2]/norm);
-        for(int k=3; k<Norb+3; k++) fprintf(FL, " %+1.16e", prb[t][k]/norm);
+      int il = t/nbloc,
+          ir = il,
+          tl = il*nbloc,
+          tr = tl;
+      if(t==nwf && t%nbloc) {
+        il = ir = nmeas;
+      } else if(t%nbloc) {
+        ir = il + 1;
+        tr = ir*nbloc;
+        if(ir >= nmeas) {
+          ir = nmeas;
+          tr = nwf;
+        }
+      }
+      if(il == ir || tr <= tl) {
+        for(int k=0; k<Norb+3; k++) rlt[k] = prb[il][k];
       } else {
-        fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e", t*dt, prb[t][0], prb[t][1], prb[t][2]);
-        for(int k=3; k<Norb+3; k++) fprintf(FL, " %+1.16e", prb[t][k]);
+        double f = (t-tl)*1.0/(tr-tl);
+        for(int k=0; k<Norb+3; k++) rlt[k] = (1.0-f)*prb[il][k] + f*prb[ir][k];
+      }
+
+      double norm = rlt[0]/Nel;
+      if(fabs(norm) > 1.e-300) {
+        fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e", t*dt, (double)Nel, rlt[1]/norm, rlt[2]/norm);
+        for(int k=3; k<Norb+3; k++) fprintf(FL, " %+1.16e", rlt[k]/norm);
+      } else {
+        fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e", t*dt, rlt[0], rlt[1], rlt[2]);
+        for(int k=3; k<Norb+3; k++) fprintf(FL, " %+1.16e", rlt[k]);
       }
       fprintf(FL, "\n");
     }
+    free1d(rlt);
     fclose(FL);
 
     sprintf(fnm, "ahm-jcmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
@@ -462,10 +610,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fclose(FL);
   }
 
+  free3d(back_accept);
   free2d(prb);
   free1d(sclf);
   free1d(jc);
 
 	return;
 }
-
