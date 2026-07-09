@@ -9,6 +9,7 @@
 #include "./qmfft.h"
 #include "./qho.h"
 #include "./Kondo-path-sampler.h"
+#include <cstdlib>
 
 #define _YYY_REALSPACE_AV_
 
@@ -195,7 +196,13 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   for(int j=0; j<Norb; j++) orbitals.insert(j);
 
   // the initial average
-  int nwf = nstep > 200 ? 200 : nstep;
+  const char *env_tmax = getenv("SEP_MB_TMAX"),
+             *env_nwf  = getenv("SEP_MB_NWF");
+  double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
+  int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
+  if(env_nwf) nwf = atoi(env_nwf);
+  if(nwf < 0) nwf = 0;
+  if(nwf > nstep) nwf = nstep;
   double gap = 0.0;
   for(int a : S0) {
     for(int b=0; b<Norb; b++) {
@@ -601,10 +608,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     char fnm[256];
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
-    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.58 fullmb-kondo adaptive-interpolated active\n");
+    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.60 fullmb-kondo adaptive-t500 active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
-    fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d\n", gap, period_steps, nmeas);
+    fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e\n",
+            gap, period_steps, nmeas, nwf, nwf*dt);
     double *rlt = array1d<double>(Norb+3);
     int il = 0;
     for(int t=0; t<=nwf; t++)  {
