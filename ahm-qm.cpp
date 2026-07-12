@@ -364,11 +364,52 @@ void AHM::diseven(const int Nstate, const double eta, const double wc){
   Norb = Nstate; 
   cpl = array1d<double>(Nstate);
   En  = array1d<double>(Nstate);
-  double c = eta/sqrt(Norb-1);
+
+  if(Norb < 3) {
+    printf("failed to build bath: Norb must be at least 3.\n");
+    abort();
+  }
+
+  const double eV_to_au = 1.0/27.211386245988;
+  const double EF = -4.5 * eV_to_au;
+  const double Eb = -10.0 * eV_to_au;
+
+  const double E0 = EF - 0.5*wc;
+  const double E1 = EF + 0.5*wc;
+
+  if(E0 <= Eb || E1 <= E0) {
+    printf("failed to build bath.\n");
+    printf("Need Eb < E0 < E1, but Eb = %g, E0 = %g, E1 = %g.\n", Eb, E0, E1);
+    abort();
+  }
+
+  const double A = E0 - Eb;
+  const double B = E1 - Eb;
+  const double M = Norb - 1.0;
+  const double r = pow(B/A, 2.0/3.0);
+
+  if(r <= 1.0) {
+    printf("failed to build bath: invalid endpoint ratio r = %g.\n", r);
+    abort();
+  }
+
+  const double joff = (M - r)/(r - 1.0);
+
+  if(joff <= -1.0) {
+    printf("failed to build bath: invalid joff = %g.\n", joff);
+    abort();
+  }
+
+  const double k = A/pow(1.0 + joff, 1.5);
+  const double c = sqrt(eta/(Norb - 1.0));
+
+  En[0]  = 0.0;
+  cpl[0] = 0.0;
 
   for(int n=0; n<Norb-1; n++) {
+    const double j = n + 1.0;
+    En[n+1]  = Eb + pow(j + joff, 1.5)*k;
     cpl[n+1] = c;
-    En[n+1]  = (n/(Norb-2.0)-0.5)*wc;
   }
 
   return;
