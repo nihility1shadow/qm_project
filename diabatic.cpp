@@ -287,6 +287,7 @@ int diabatic(int argc, char **argv) {
         }
         double wc      = 3.6749323758566216e-01, // 10 eV
                eta     = 0.01,
+               delE    = -12.0697/27.211386245988, // O2 HOMO energy, eV converted to a.u.
                delx    = 2.0,
                xmin    =-8.0,
                xmax    =+8.0,
@@ -301,16 +302,22 @@ int diabatic(int argc, char **argv) {
         {
           const char *env_wc_ev = getenv("AHM_WC_EV");
           const char *env_eta   = getenv("AHM_ETA");
+          const char *env_dele_ev = getenv("AHM_DELE_EV");
           const char *env_nstep = getenv("AHM_NSTEP");
           if(env_wc_ev) wc = atof(env_wc_ev)/27.211386245988;
           if(env_eta) eta = atof(env_eta);
+          if(env_dele_ev) delE = atof(env_dele_ev)/27.211386245988;
           if(env_nstep) nstep = atoi(env_nstep);
+          if(wc > 10.0/27.211386245988) {
+            printf("AHM_WC_EV must be <= 10 eV for this scan.\n");
+            abort();
+          }
           if(nstep <= 0) {
             printf("AHM_NSTEP must be positive.\n");
             abort();
           }
-          printf("#AHAU_PARAMS wc_au=%1.16e wc_eV=%1.16e eta=%1.16e nstep=%d dt=%g\n",
-                 wc, wc*27.211386245988, eta, nstep, dt);
+          printf("#AHAU_PARAMS wc_au=%1.16e wc_eV=%1.16e eta=%1.16e delE_au=%1.16e delE_eV=%1.16e nstep=%d dt=%g\n",
+                 wc, wc*27.211386245988, eta, delE, delE*27.211386245988, nstep, dt);
         }
         xinit  = delx;
         AHM ahm;
@@ -321,7 +328,7 @@ int diabatic(int argc, char **argv) {
         //ahm.discretize(Norb, eta, wc);
         ahm.diseven(Norb, eta, wc);
         ahm.set_Nel(Nel, Norb);
-        ahm.set_delE(0.375*wc); // aligned with the Fermi level
+        ahm.set_delE(delE);
         ahm.set_basis();
         ahm.calc_Eocc();
         ahm.set_exc();
