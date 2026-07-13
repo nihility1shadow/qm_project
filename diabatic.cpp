@@ -287,7 +287,7 @@ int diabatic(int argc, char **argv) {
         }
         double wc      = 3.6749323758566216e-01, // 10 eV
                eta     = 0.01,
-               delE    = -12.0697/27.211386245988, // O2 HOMO energy, eV converted to a.u.
+               delE    = -0.6319, // O atom 2p HF-Roothaan orbital energy, in a.u.
                delx    = 2.0,
                xmin    =-8.0,
                xmax    =+8.0,
