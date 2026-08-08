@@ -1,0 +1,8 @@
+job_id=634917
+nodes=1 tasks=16
+command=./na_mpi_cloud.out 10 1 2000000 10 5
+AHM_WC_EV=6.5
+AHM_ETA=4.0e-5
+AHM_DELE_EV=<default>
+AHM_NSTEP=100
+SEP_MB_TMAX=50

@@ -1,0 +1,15 @@
+CXX ?= g++
+CXXFLAGS ?= -O3 -std=c++17 -DNDEBUG -Wall -Wextra -pedantic
+
+.PHONY: all clean self-test
+
+all: convergence_analyzer
+
+convergence_analyzer: convergence_analyzer.cpp
+	$(CXX) $(CXXFLAGS) $< -o $@
+
+self-test: convergence_analyzer
+	./convergence_analyzer --self-test
+
+clean:
+	rm -f convergence_analyzer convergence_analyzer.exe

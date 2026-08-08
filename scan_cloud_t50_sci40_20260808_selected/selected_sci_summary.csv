@@ -1,0 +1,4 @@
+case_id,status,total_index,best_tail_score,confirmed_start,possible_start,converged_end,repeats,points,series,noise_growth,param.eta,param.ntraj,param.wc_eV
+wc5.5_eta3.5e-5,inconclusive,89.5384227747,92.3030306965,,0,50,3,101,10,16.7763998634,3.5e-5,2000000,5.5
+wc6.5_eta4.0e-5,converged,95.340333543,99.3128474406,0,0,50,4,101,10,22.0594032285,4.0e-5,2000000,6.5
+wc8.5_eta5.0e-5,inconclusive,77.0844506192,80.2963027283,,0,50,3,101,10,22.1295778719,5.0e-5,2000000,8.5

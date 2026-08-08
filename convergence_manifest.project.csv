@@ -1,0 +1,10 @@
+case_id,data_file,param.wc_eV,param.eta,param.ntraj
+wc6.5_eta7.5e-5,scan_cloud_t50_20260808_grid_optimized/wc6.5_eta7.5e-5_rep1/ahm-sepmb-s10-n5-2000000.dat,6.5,7.5e-5,2000000
+wc6.5_eta7.5e-5,scan_cloud_t50_20260808_grid_optimized/wc6.5_eta7.5e-5_rep2/ahm-sepmb-s10-n5-2000000.dat,6.5,7.5e-5,2000000
+wc6.5_eta7.5e-5,scan_cloud_t50_20260808_grid_optimized/wc6.5_eta7.5e-5_rep3/ahm-sepmb-s10-n5-2000000.dat,6.5,7.5e-5,2000000
+wc4.6_eta1.30e-4,scan_cloud_t50_20260808_grid_optimized/wc4.6_eta1.30e-4_rep1/ahm-sepmb-s10-n5-2000000.dat,4.6,1.30e-4,2000000
+wc4.6_eta1.30e-4,scan_cloud_t50_20260808_grid_optimized/wc4.6_eta1.30e-4_rep2/ahm-sepmb-s10-n5-2000000.dat,4.6,1.30e-4,2000000
+wc4.4_eta1.15e-4,scan_cloud_t50_20260808_grid_optimized/wc4.4_eta1.15e-4_rep1/ahm-sepmb-s10-n5-2000000.dat,4.4,1.15e-4,2000000
+wc4.4_eta1.15e-4,scan_cloud_t50_20260808_grid_optimized/wc4.4_eta1.15e-4_rep2/ahm-sepmb-s10-n5-2000000.dat,4.4,1.15e-4,2000000
+wc4.2_eta1.10e-4,scan_cloud_t50_20260808_grid_optimized/wc4.2_eta1.10e-4_rep1/ahm-sepmb-s10-n5-2000000.dat,4.2,1.10e-4,2000000
+wc4.2_eta1.10e-4,scan_cloud_t50_20260808_grid_optimized/wc4.2_eta1.10e-4_rep2/ahm-sepmb-s10-n5-2000000.dat,4.2,1.10e-4,2000000
