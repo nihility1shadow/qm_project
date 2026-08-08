@@ -46,8 +46,18 @@ def case_files(manifest: Path, case_id: str) -> list[Path]:
 
 def plot_ranking(rows: list[dict[str, str]], output: Path, top: int) -> None:
     selected = rows[: min(top, len(rows))]
-    q_fields = [name for name in rows[0] if name.startswith("Q_")]
-    labels = [name.removeprefix("Q_").replace("_", "-") for name in q_fields]
+    q_fields = [
+        name for name in rows[0] if name.startswith("min_active_Q_")
+    ]
+    if not q_fields:
+        q_fields = [
+            name for name in rows[0]
+            if name.startswith("Q_") and not name.startswith("Q_orb")
+        ]
+        prefix = "Q_"
+    else:
+        prefix = "min_active_Q_"
+    labels = [name.removeprefix(prefix).replace("_", "-") for name in q_fields]
     x = np.arange(len(q_fields))
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.2), constrained_layout=True)
@@ -61,8 +71,8 @@ def plot_ranking(rows: list[dict[str, str]], output: Path, top: int) -> None:
         )
     axes[0].axhline(2.0, color="#b91c1c", linestyle="--", linewidth=1)
     axes[0].set_xticks(x, labels, rotation=35, ha="right")
-    axes[0].set_ylabel("repeat signal/noise Q")
-    axes[0].set_title("Independent-repeat visibility")
+    axes[0].set_ylabel("minimum active-orbital Q")
+    axes[0].set_title("Strict per-orbital visibility")
     axes[0].grid(alpha=0.2)
     axes[0].legend(fontsize=8)
 

@@ -1,5 +1,11 @@
 # Parameter optimization result
 
+> **Superseded on 2026-08-09.** This historical result used a pooled
+> all-orbital Q score. A strict per-orbital recheck found that the weakest
+> active orbital falls below `Q = 2` in `40-50 a.u.`, so this parameter is
+> validated only through `40 a.u.`, not 60. The replacement result is in
+> `scan_cloud_strict_validation_t75_20260809/RESULT_SUMMARY.md`.
+
 ## Constraints
 
 - Bath cutoff: `wc <= 10 eV`.

@@ -1,0 +1,5 @@
+﻿"case_id","data_file","param.wc_eV","param.eta","param.ntraj","param.mpi_ranks","param.tmax","job_id"
+"w5_e0p00024","cloud-runs\635121\ahm-sepmb-s10-n5-32000000.dat","5","0.00024","32000000","128","75","635121"
+"w5_e0p00024","cloud-runs\635122\ahm-sepmb-s10-n5-32000000.dat","5","0.00024","32000000","128","75","635122"
+"w5_e0p00024","cloud-runs\635123\ahm-sepmb-s10-n5-32000000.dat","5","0.00024","32000000","128","75","635123"
+"w5_e0p00024","cloud-runs\635124\ahm-sepmb-s10-n5-32000000.dat","5","0.00024","32000000","128","75","635124"
