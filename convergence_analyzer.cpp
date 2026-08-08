@@ -41,6 +41,7 @@ struct Options {
   double pass_probability = 0.95;
   double ridge_penalty = 1.0;
   bool self_test = false;
+  bool html_report = false;
 };
 
 struct DataSet {
@@ -826,6 +827,11 @@ std::vector<ManifestCase> read_manifest(const std::string &path) {
   if (!input) throw std::runtime_error("cannot open manifest: " + path);
   std::string line;
   if (!std::getline(input, line)) throw std::runtime_error("manifest is empty: " + path);
+  if (line.size() >= 3 && static_cast<unsigned char>(line[0]) == 0xef &&
+      static_cast<unsigned char>(line[1]) == 0xbb &&
+      static_cast<unsigned char>(line[2]) == 0xbf) {
+    line.erase(0, 3);
+  }
   const std::vector<std::string> header = parse_csv_row(line);
   int case_column = -1;
   int data_column = -1;
@@ -1395,6 +1401,7 @@ void usage(std::ostream &out) {
       << "  --pass-prob X            Confirmation probability (default 0.95)\n"
       << "  --min-tail-segments N    Required consecutive tail segments (default 2)\n"
       << "  --out-prefix PATH        Output prefix (default convergence)\n"
+      << "  --html-report            Also write the optional HTML report\n"
       << "  --self-test              Run built-in synthetic tests\n\n"
       << "Manifest columns: case_id,data_file,param.wc,param.eta,...\n";
 }
@@ -1429,6 +1436,7 @@ Options parse_options(int argc, char **argv) {
     else if (argument == "--pass-prob") options.pass_probability = parse_double(value(argument), argument);
     else if (argument == "--ridge") options.ridge_penalty = parse_double(value(argument), argument);
     else if (argument == "--out-prefix") options.out_prefix = value(argument);
+    else if (argument == "--html-report") options.html_report = true;
     else if (argument == "--self-test") options.self_test = true;
     else if (argument == "--help" || argument == "-h") {
       usage(std::cout);
@@ -1511,7 +1519,9 @@ int main(int argc, char **argv) {
     write_summary_csv(results, options.out_prefix + "_summary.csv");
     write_segments_csv(results, options.out_prefix + "_segments.csv");
     write_json(results, tendency, options, options.out_prefix + "_summary.json");
-    write_html(results, tendency, options, options.out_prefix + "_report.html");
+    if (options.html_report) {
+      write_html(results, tendency, options, options.out_prefix + "_report.html");
+    }
     for (const AnalysisResult &result : results) print_result(result);
     if (tendency.fitted) {
       std::cout << "parameter_model=" << tendency.note << "\n";
@@ -1520,9 +1530,13 @@ int main(int argc, char **argv) {
                   << tendency.predicted_low << ',' << tendency.predicted_high << "]\n";
       }
     }
-    std::cout << "outputs=" << options.out_prefix << "_report.html, "
-              << options.out_prefix << "_summary.csv, " << options.out_prefix
-              << "_segments.csv, " << options.out_prefix << "_summary.json\n";
+    std::cout << "outputs=" << options.out_prefix << "_summary.csv, "
+              << options.out_prefix << "_segments.csv, " << options.out_prefix
+              << "_summary.json";
+    if (options.html_report) {
+      std::cout << ", " << options.out_prefix << "_report.html";
+    }
+    std::cout << '\n';
     return 0;
   } catch (const std::exception &error) {
     std::cerr << "error: " << error.what() << '\n';

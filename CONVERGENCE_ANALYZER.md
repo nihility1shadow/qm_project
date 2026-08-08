@@ -11,7 +11,7 @@ SepMB 输出，也可用于普通的“一列时间 + 一列结果”数据。
 - 确认收敛区间与可能的收敛起点；
 - 后段相对前段的噪声增长倍数；
 - 多组初始参数的收敛倾向；
-- CSV、JSON 和带内嵌 SVG 图的单文件 HTML 报告。
+- CSV 和 JSON 数值摘要；仅在显式传入 `--html-report` 时生成 HTML。
 
 ## 编译
 
@@ -27,8 +27,7 @@ Windows MinGW：
 g++ -O3 -std=c++17 -DNDEBUG convergence_analyzer.cpp -o convergence_analyzer.exe
 ```
 
-程序只使用 C++ 标准库。数据分析为线性扫描；HTML 绘图最多保留指定数量的点，不会把
-百万级数据全部写进报告。
+程序只使用 C++ 标准库，数据分析为线性扫描。默认流程不生成网页或图片。
 
 也可以直接使用启动脚本；它们会在源码变化后自动重新编译：
 
@@ -94,6 +93,26 @@ case_b,case_b/run2.dat,4.6,1.3e-4,2000000
 
 当参数组合数少于 `max(8, 2n+4)` 时，报告会明确标记参数倾向模型不可靠，不会把少量
 样本的回归结果冒充确定结论。
+
+## 振荡信号的参数筛选
+
+`SCI/TCI` 检验的是时间序列是否趋于平坦，不适合直接淘汰本项目中应当保留的量子振荡。
+参数筛选使用独立重复之间的分段信噪比 `Q`：
+
+```powershell
+python rank_sci_q.py --manifest manifest.csv --out-prefix ranking `
+  --segment-width 10 --required-until 60 --min-q 2 --min-repeats 3
+```
+
+该命令只输出 CSV/JSON。所有完整分段都满足 `Q >= 2`、独立重复数不少于 3 且电子数
+守恒误差不超过 `1e-8` 时，所要求的时间区间才标记为有效。
+
+绘图由独立模块按需完成：
+
+```powershell
+python plot_scan_results.py --manifest manifest.csv --ranking ranking.csv `
+  --out-prefix result --top 5
+```
 
 ## 指标含义
 

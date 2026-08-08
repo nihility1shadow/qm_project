@@ -1,0 +1,9 @@
+case_id,data_file,param.wc_eV,param.eta,param.ntraj,param.mpi_ranks,param.tmax
+t75_w45_e120,data/wc4.5_eta1.20e-4/rep1/ahm-sepmb-s10-n5-8000000.dat,4.5,1.20e-4,8000000,64,75
+t75_w45_e120,data/wc4.5_eta1.20e-4/rep2/ahm-sepmb-s10-n5-8000000.dat,4.5,1.20e-4,8000000,64,75
+t75_w45_e120,data/wc4.5_eta1.20e-4/rep3/ahm-sepmb-s10-n5-8000000.dat,4.5,1.20e-4,8000000,64,75
+t75_w45_e120,data/wc4.5_eta1.20e-4/rep4/ahm-sepmb-s10-n5-8000000.dat,4.5,1.20e-4,8000000,64,75
+t75_w44_e115,data/wc4.4_eta1.15e-4/rep1/ahm-sepmb-s10-n5-8000000.dat,4.4,1.15e-4,8000000,64,75
+t75_w44_e115,data/wc4.4_eta1.15e-4/rep2/ahm-sepmb-s10-n5-8000000.dat,4.4,1.15e-4,8000000,64,75
+t75_w44_e115,data/wc4.4_eta1.15e-4/rep3/ahm-sepmb-s10-n5-8000000.dat,4.4,1.15e-4,8000000,64,75
+t75_w44_e115,data/wc4.4_eta1.15e-4/rep4/ahm-sepmb-s10-n5-8000000.dat,4.4,1.15e-4,8000000,64,75
