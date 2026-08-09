@@ -66,7 +66,7 @@ def plot_orbitals(
     best = load_rows(ranking)[0]
     case_id = best["case_id"]
     records = [row for row in load_rows(manifest) if row["case_id"] == case_id]
-    if len(records) < 3:
+    if len(records) < 2:
         raise ValueError(f"{case_id} has only {len(records)} manifest records")
 
     runs = []

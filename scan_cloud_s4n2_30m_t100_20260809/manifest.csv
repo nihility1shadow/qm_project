@@ -1,0 +1,3 @@
+"case_id","data_file","param.wc_eV","param.eta","param.ntraj","param.mpi_ranks","param.tmax","job_id"
+"s4n2_wc0p25_eta6em5_30m","cloud-runs\636247\ahm-sepmb-s4-n2-30000000.dat","0.25","6e-5","30000000","64","100","636247"
+"s4n2_wc0p25_eta6em5_30m","cloud-runs\636248\ahm-sepmb-s4-n2-30000000.dat","0.25","6e-5","30000000","64","100","636248"
