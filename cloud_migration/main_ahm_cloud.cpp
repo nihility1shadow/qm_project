@@ -94,8 +94,7 @@ int main(int argc, char **argv) {
   const char *env_nstep = std::getenv("AHM_NSTEP");
   if (env_wc_ev) wc = std::atof(env_wc_ev) / EV_PER_HARTREE;
   if (env_eta) eta = std::atof(env_eta);
-  // Preserve the current server model's 0.6 conversion factor exactly.
-  if (env_dele_ev) delE = std::atof(env_dele_ev) * 0.6 / EV_PER_HARTREE;
+  if (env_dele_ev) delE = std::atof(env_dele_ev) / EV_PER_HARTREE;
   if (env_nstep) nstep = std::atoi(env_nstep);
   if (wc <= 0.0 || wc > 10.0 / EV_PER_HARTREE) {
     fail("AHM_WC_EV must be in (0, 10] eV for this scan.");

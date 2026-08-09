@@ -197,12 +197,15 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
   // the initial average
   const char *env_tmax = getenv("SEP_MB_TMAX"),
-             *env_nwf  = getenv("SEP_MB_NWF");
+             *env_nwf  = getenv("SEP_MB_NWF"),
+             *env_measure_stride = getenv("SEP_MB_MEASURE_STRIDE");
   double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
   int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
   if(env_nwf) nwf = atoi(env_nwf);
   if(nwf < 0) nwf = 0;
   if(nwf > nstep) nwf = nstep;
+  int forced_measure_stride = env_measure_stride ? atoi(env_measure_stride) : 0;
+  if(forced_measure_stride < 0) forced_measure_stride = 0;
   double gap = 0.0;
   for(int a : S0) {
     for(int b=0; b<Norb; b++) {
@@ -230,8 +233,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   measure_steps.push_back(0);
   int last_step = 0;
   for(int j=1; j<=nwf; ) {
-    int stride = j <= dense_end ? 1 : (j <= mid_end ? stride_mid :
-                 (j <= slow_end ? stride_slow : stride_late));
+    int stride = forced_measure_stride > 0 ? forced_measure_stride :
+                 (j <= dense_end ? 1 : (j <= mid_end ? stride_mid :
+                 (j <= slow_end ? stride_slow : stride_late)));
     if(j > last_step) {
       measure_steps.push_back(j);
       last_step = j;
@@ -611,8 +615,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.60 fullmb-kondo adaptive-t500 active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
-    fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e\n",
-            gap, period_steps, nmeas, nwf, nwf*dt);
+    fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e forced_stride=%d\n",
+            gap, period_steps, nmeas, nwf, nwf*dt, forced_measure_stride);
     double *rlt = array1d<double>(Norb+3);
     int il = 0;
     for(int t=0; t<=nwf; t++)  {
