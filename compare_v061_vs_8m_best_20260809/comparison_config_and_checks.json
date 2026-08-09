@@ -18,11 +18,14 @@
     636078
   ],
   "new_job": 636268,
+  "qm_job": 636269,
   "representative_old_job": 636040,
   "representative_selection": "old 8M run with the lowest RMS distance to the six-run old mean",
   "old_repeats": 6,
   "new_repeats": 1,
   "new_max_particle_number_error": 3.0608937606757536e-10,
   "old_max_particle_number_error": 8.167155840510532e-11,
-  "new_all_finite": true
+  "new_all_finite": true,
+  "qm_all_finite": true,
+  "qm_max_particle_number_error": 2.5508484213787597e-12
 }

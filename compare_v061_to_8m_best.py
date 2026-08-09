@@ -22,6 +22,7 @@ OLD_FILES = [
 NEW_FILE = (
     OUT / "636268-v061-8m-best" / "ahm-sepmb-s10-n5-8000000.dat"
 )
+QM_FILE = OUT / "636269-qm-same-parameters" / "ahm-qm-s10-n5.dat"
 REPRESENTATIVE_OLD_JOB = "636040"
 WINDOWS = tuple((float(start), float(start + 25)) for start in range(0, 150, 25))
 
@@ -39,12 +40,17 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     old_data = [load(path) for path in OLD_FILES]
     new_data = load(NEW_FILE)
+    qm_data = load(QM_FILE)
     times = new_data[:, 0]
-    if any(not np.array_equal(times, data[:, 0]) for data in old_data):
-        raise ValueError("old and new time grids differ")
+    if any(
+        not np.array_equal(times, data[:, 0])
+        for data in [*old_data, qm_data]
+    ):
+        raise ValueError("old, new, and QM time grids differ")
 
     old_occ = np.stack([data[:, 4:14] for data in old_data])
     new_occ = new_data[:, 4:14]
+    qm_occ = qm_data[:, 4:14]
     old_mean = old_occ.mean(axis=0)
     old_std = old_occ.std(axis=0, ddof=1)
     representative_index = next(
@@ -68,6 +74,7 @@ def main() -> None:
         },
         "old_jobs": [636039, 636040, 636041, 636076, 636077, 636078],
         "new_job": 636268,
+        "qm_job": 636269,
         "representative_old_job": int(REPRESENTATIVE_OLD_JOB),
         "representative_selection": "old 8M run with the lowest RMS distance to the six-run old mean",
         "old_repeats": 6,
@@ -79,6 +86,10 @@ def main() -> None:
             np.max(np.abs(old_occ.sum(axis=2) - 5.0))
         ),
         "new_all_finite": bool(np.isfinite(new_data).all()),
+        "qm_all_finite": bool(np.isfinite(qm_data).all()),
+        "qm_max_particle_number_error": float(
+            np.max(np.abs(qm_occ.sum(axis=1) - 5.0))
+        ),
     }
     (OUT / "comparison_config_and_checks.json").write_text(
         json.dumps(checks, indent=2), encoding="utf-8"
@@ -89,6 +100,12 @@ def main() -> None:
         mask = (times >= start) & (times <= end)
         difference = new_occ[mask] - old_mean[mask]
         same_8m_difference = new_occ[mask] - old_representative[mask]
+        old_single_qm_error = old_representative[mask] - qm_occ[mask]
+        old_mean_qm_error = old_mean[mask] - qm_occ[mask]
+        new_qm_error = new_occ[mask] - qm_occ[mask]
+        old_single_qm_rms = float(np.sqrt(np.mean(old_single_qm_error**2)))
+        old_mean_qm_rms = float(np.sqrt(np.mean(old_mean_qm_error**2)))
+        new_qm_rms = float(np.sqrt(np.mean(new_qm_error**2)))
         old_noise = old_std[mask]
         rows.append(
             {
@@ -98,6 +115,13 @@ def main() -> None:
                 ),
                 "max_abs_new_8m_minus_old_8m": float(
                     np.max(np.abs(same_8m_difference))
+                ),
+                "old_8m_rms_vs_qm": old_single_qm_rms,
+                "old_six_run_mean_rms_vs_qm": old_mean_qm_rms,
+                "new_8m_rms_vs_qm": new_qm_rms,
+                "new_over_old_8m_qm_rms": float(
+                    new_qm_rms / old_single_qm_rms
+                    if old_single_qm_rms else float("inf")
                 ),
                 "rms_new_minus_old_mean": float(np.sqrt(np.mean(difference**2))),
                 "max_abs_new_minus_old_mean": float(np.max(np.abs(difference))),
@@ -135,6 +159,33 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(per_old)
 
+    orbital_rows = []
+    for orbital in range(10):
+        old_error = old_representative[:, orbital] - qm_occ[:, orbital]
+        old_mean_error = old_mean[:, orbital] - qm_occ[:, orbital]
+        new_error = new_occ[:, orbital] - qm_occ[:, orbital]
+        orbital_rows.append(
+            {
+                "orbital": orbital,
+                "old_8m_rms_vs_qm": float(np.sqrt(np.mean(old_error**2))),
+                "old_six_run_mean_rms_vs_qm": float(
+                    np.sqrt(np.mean(old_mean_error**2))
+                ),
+                "new_8m_rms_vs_qm": float(np.sqrt(np.mean(new_error**2))),
+                "new_over_old_8m_qm_rms": float(
+                    np.sqrt(np.mean(new_error**2))
+                    / np.sqrt(np.mean(old_error**2))
+                    if np.any(old_error) else float("inf")
+                ),
+            }
+        )
+    with (OUT / "qm_comparison_per_orbital.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(orbital_rows[0]))
+        writer.writeheader()
+        writer.writerows(orbital_rows)
+
     def plot_same_sample_comparison(limit: float | None, filename: str) -> None:
         mask = times <= limit if limit is not None else np.ones(times.shape, dtype=bool)
         plot_times = times[mask]
@@ -143,6 +194,7 @@ def main() -> None:
             old_single_delta = old_representative[mask, orbital] - initial[orbital]
             new_delta = new_occ[mask, orbital] - initial[orbital]
             old_mean_delta = old_mean[mask, orbital] - initial[orbital]
+            qm_delta = qm_occ[mask, orbital] - initial[orbital]
             axis.plot(
                 plot_times,
                 old_single_delta,
@@ -156,6 +208,13 @@ def main() -> None:
                 color="#D55E00",
                 lw=1.35,
                 label="v0.61 fixed, 8M (job 636268)" if orbital == 0 else None,
+            )
+            axis.plot(
+                plot_times,
+                qm_delta,
+                color="#009E73",
+                lw=1.55,
+                label="exact QM (job 636269)" if orbital == 0 else None,
             )
             axis.plot(
                 plot_times,
@@ -180,12 +239,12 @@ def main() -> None:
             labels,
             loc="upper center",
             bbox_to_anchor=(0.5, 0.945),
-            ncol=3,
+            ncol=4,
             frameon=False,
         )
         interval = f"0-{limit:g} a.u." if limit is not None else "0-150 a.u."
         fig.suptitle(
-            f"Same-sample comparison ({interval}): 8M trajectories per solid curve\n"
+            f"Same-parameter comparison ({interval}): 8M trajectories per Poisson curve\n"
             "wc=0.12 eV, eta=2.8e-5, delE=-2.5 eV, Norb=10, Nel=5",
             y=0.995,
         )
@@ -194,11 +253,42 @@ def main() -> None:
         plt.close(fig)
 
     plot_same_sample_comparison(
-        None, "same_8m_old636040_vs_new636268_full_t150.png"
+        None, "same_params_old8m_new8m_qm_full_t150.png"
     )
     plot_same_sample_comparison(
-        60.0, "same_8m_old636040_vs_new636268_zoom_t60.png"
+        60.0, "same_params_old8m_new8m_qm_zoom_t60.png"
     )
+
+    labels = [row["window"] for row in rows]
+    old_qm_rms = np.array([row["old_8m_rms_vs_qm"] for row in rows])
+    new_qm_rms = np.array([row["new_8m_rms_vs_qm"] for row in rows])
+    x = np.arange(len(labels))
+    width = 0.36
+    fig, axis = plt.subplots(figsize=(10.5, 5.8))
+    axis.bar(
+        x - width / 2,
+        old_qm_rms,
+        width,
+        color="#0072B2",
+        label="v0.60 old 8M vs QM",
+    )
+    axis.bar(
+        x + width / 2,
+        new_qm_rms,
+        width,
+        color="#D55E00",
+        label="v0.61 fixed 8M vs QM",
+    )
+    axis.set_xticks(x, labels)
+    axis.set_xlabel("time window (a.u.)")
+    axis.set_ylabel("RMS occupation error vs exact QM")
+    axis.set_yscale("log")
+    axis.grid(axis="y", color="#dddddd", lw=0.6)
+    axis.legend(frameon=False)
+    axis.set_title("Same-parameter error against exact QM (all 10 orbitals)")
+    fig.tight_layout()
+    fig.savefig(OUT / "qm_rms_error_by_time_window.png", dpi=190)
+    plt.close(fig)
 
     fig, axes = plt.subplots(2, 5, figsize=(18, 7.5), sharex=True)
     for orbital, axis in enumerate(axes.flat):
