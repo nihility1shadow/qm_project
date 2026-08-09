@@ -1,0 +1,15 @@
+case_id,wc_eV,eta,parent_case_id,selection_reason
+s4r2_wc0p08_eta2em5,0.08,2.0e-5,s4r1_wc0p12_eta3em5,lower-width lower-eta refinement
+s4r2_wc0p08_eta4em5,0.08,4.0e-5,s4r1_wc0p12_eta3em5,lower-width upper-eta refinement
+s4r2_wc0p10_eta2em5,0.10,2.0e-5,s4r1_wc0p12_eta3em5,near-winner lower eta
+s4r2_wc0p10_eta4em5,0.10,4.0e-5,s4r1_wc0p12_eta3em5,near-winner upper eta
+s4r2_wc0p12_eta2em5,0.12,2.0e-5,s4r1_wc0p12_eta3em5,winner-width lower eta
+s4r2_wc0p12_eta4em5,0.12,4.0e-5,s4r1_wc0p12_eta3em5,winner-width upper eta
+s4r2_wc0p12_eta5em5,0.12,5.0e-5,s4r1_wc0p12_eta3em5,winner-width higher eta
+s4r2_wc0p15_eta2em5,0.15,2.0e-5,s4r1_wc0p12_eta3em5,upper-width lower eta
+s4r2_wc0p15_eta3em5,0.15,3.0e-5,s4r1_wc0p12_eta3em5,upper-width matched eta
+s4r2_wc0p15_eta5em5,0.15,5.0e-5,s4r1_wc0p12_eta3em5,upper-width higher eta
+s4r2_wc0p18_eta4em5,0.18,4.0e-5,s4r1_wc0p20_eta8em5,bridge to high-eta branch
+s4r2_wc0p25_eta6em5,0.25,6.0e-5,s4r1_wc0p20_eta8em5,high-eta branch refinement
+s4r2_wc0p30_eta8em5,0.30,8.0e-5,s4r1_wc0p40_eta8em5,high-eta width interpolation
+s4r2_wc0p50_eta1em4,0.50,1.0e-4,s4r1_wc0p40_eta8em5,high-eta upper boundary

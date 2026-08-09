@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import csv
 from pathlib import Path
 
@@ -30,6 +31,8 @@ def q_windows(row: dict[str, str]) -> tuple[np.ndarray, np.ndarray]:
 
 def plot_q(ranking: Path, output: Path, top: int, threshold: float) -> None:
     rows = load_rows(ranking)[:top]
+    required_until = float(rows[0]["required_until"])
+    time_end = float(rows[0]["time_end"])
     fig, axis = plt.subplots(figsize=(11.5, 6.5))
     colors = plt.get_cmap("tab10").colors
     for index, row in enumerate(rows):
@@ -42,11 +45,11 @@ def plot_q(ranking: Path, output: Path, top: int, threshold: float) -> None:
         )
     axis.axhline(threshold, color="#B91C1C", linewidth=1.4, linestyle="--",
                  label=f"target Q > {threshold:g}")
-    axis.axvline(130, color="#475569", linewidth=1.1, linestyle=":",
-                 label="required through 130")
+    axis.axvline(required_until, color="#475569", linewidth=1.1, linestyle=":",
+                 label=f"required through {required_until:g}")
     axis.set(xlabel="time-window midpoint (a.u.)", ylabel="minimum active-orbital Q",
              title="Strict convergence Q by 10 a.u. window")
-    axis.set_xlim(0, 150)
+    axis.set_xlim(0, time_end)
     axis.set_yscale("log")
     axis.set_ylim(bottom=0.8)
     axis.grid(True, color="#CBD5E1", linewidth=0.6, alpha=0.75)
@@ -76,17 +79,25 @@ def plot_orbitals(
             time = current_time
         elif not np.allclose(time, current_time):
             raise ValueError(f"time grid differs in {path}")
-        runs.append(data[:, 4:14])
+        runs.append(data[:, 4:])
 
     occupations = np.stack(runs)
     delta = occupations - occupations[:, :1, :]
     mean = delta.mean(axis=0)
     std = delta.std(axis=0, ddof=1)
+    orbital_count = mean.shape[1]
+    columns = min(5, max(2, math.ceil(orbital_count / 2)))
+    rows = math.ceil(orbital_count / columns)
     colors = plt.get_cmap("tab10").colors
-    fig, axes = plt.subplots(2, 5, figsize=(16, 8.5), sharex=True)
-    fig.subplots_adjust(left=0.07, right=0.985, bottom=0.09, top=0.80,
+    fig_width = max(12.0, 3.2 * columns)
+    fig_height = max(7.8, 3.4 * rows + 1.2)
+    fig, axes = plt.subplots(
+        rows, columns, figsize=(fig_width, fig_height), sharex=True,
+        squeeze=False,
+    )
+    fig.subplots_adjust(left=0.09, right=0.98, bottom=0.09, top=0.80,
                         hspace=0.40, wspace=0.30)
-    for orbital, axis in enumerate(axes.flat):
+    for orbital, axis in enumerate(axes.flat[:orbital_count]):
         lower = mean[:, orbital] - std[:, orbital]
         upper = mean[:, orbital] + std[:, orbital]
         axis.fill_between(time, lower, upper, color=colors[orbital], alpha=0.18,
@@ -105,10 +116,13 @@ def plot_orbitals(
         formatter = ScalarFormatter(useMathText=True)
         formatter.set_powerlimits((-2, 2))
         axis.yaxis.set_major_formatter(formatter)
-        if orbital >= 5:
+        if orbital >= (rows - 1) * columns:
             axis.set_xlabel("time (a.u.)")
-        if orbital in (0, 5):
+        if orbital % columns == 0:
             axis.set_ylabel("occupation change")
+
+    for axis in axes.flat[orbital_count:]:
+        axis.set_visible(False)
 
     fig.suptitle(
         f"Best search result: wc={float(best['wc_eV']):g} eV, "
@@ -117,7 +131,8 @@ def plot_orbitals(
     fig.text(
         0.5, 0.925,
         f"{ntraj:,} trajectories x {len(runs)} repeats | solid: mean | band: +/- 1 SD | "
-        f"strict Q through 130={float(best['required_Q']):.2f}",
+        f"strict Q through {float(best['required_until']):g}="
+        f"{float(best['required_Q']):.2f}",
         ha="center", fontsize=10.5, color="#334155",
     )
     output.parent.mkdir(parents=True, exist_ok=True)

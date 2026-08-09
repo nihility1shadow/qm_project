@@ -1,0 +1,16 @@
+case_id,wc_eV,eta,source_group,selection_reason
+s4r1_wc0p05_eta1em5,0.05,1.0e-5,narrow-grid,low-wc low-coupling corner
+s4r1_wc0p05_eta3em5,0.05,3.0e-5,narrow-grid,low-wc middle coupling
+s4r1_wc0p05_eta8em5,0.05,8.0e-5,narrow-grid,low-wc high coupling
+s4r1_wc0p12_eta1em5,0.12,1.0e-5,narrow-grid,previous 10-orbital optimum width
+s4r1_wc0p12_eta3em5,0.12,3.0e-5,narrow-grid,near previous validated optimum
+s4r1_wc0p12_eta8em5,0.12,8.0e-5,narrow-grid,eta sensitivity at previous optimum width
+s4r1_wc0p20_eta1em5,0.20,1.0e-5,narrow-grid,second width low coupling
+s4r1_wc0p20_eta3em5,0.20,3.0e-5,narrow-grid,second width middle coupling
+s4r1_wc0p20_eta8em5,0.20,8.0e-5,narrow-grid,second width high coupling
+s4r1_wc0p40_eta1em5,0.40,1.0e-5,narrow-grid,upper narrow-band low coupling
+s4r1_wc0p40_eta3em5,0.40,3.0e-5,narrow-grid,upper narrow-band middle coupling
+s4r1_wc0p40_eta8em5,0.40,8.0e-5,narrow-grid,upper narrow-band high coupling
+s4r1_wc1p0_eta1p2em4,1.00,1.2e-4,broad-control,moderate-band control
+s4r1_wc2p5_eta1p2em4,2.50,1.2e-4,broad-control,wide-band control
+s4r1_wc5p0_eta1p2em4,5.00,1.2e-4,broad-control,very-wide-band control

@@ -1,0 +1,13 @@
+case_id,wc_eV,eta,rep
+s4r3_wc0p11_eta3p5em5,0.11,3.5e-5,4
+s4r3_wc0p11_eta3p5em5,0.11,3.5e-5,5
+s4r3_wc0p11_eta3p5em5,0.11,3.5e-5,6
+s4r3_wc0p09_eta4em5,0.09,4.0e-5,4
+s4r3_wc0p09_eta4em5,0.09,4.0e-5,5
+s4r3_wc0p09_eta4em5,0.09,4.0e-5,6
+s4r3_wc0p07_eta5em5,0.07,5.0e-5,4
+s4r3_wc0p07_eta5em5,0.07,5.0e-5,5
+s4r3_wc0p07_eta5em5,0.07,5.0e-5,6
+s4r3_wc0p09_eta4p5em5,0.09,4.5e-5,4
+s4r3_wc0p09_eta4p5em5,0.09,4.5e-5,5
+s4r3_wc0p09_eta4p5em5,0.09,4.5e-5,6
