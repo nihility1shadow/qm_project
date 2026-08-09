@@ -1,0 +1,13 @@
+case_id,wc_eV,eta,source_group,selection_reason
+r1_wc0p05_eta1em4,0.05,1e-4,ultralow_validated8,best validated numerical Q at 1M
+r1_wc0p2_eta5em5,0.2,5e-5,ultralow_validated8,second validated ultralow candidate
+r1_wc0p5_eta1em4,0.5,1e-4,ultralow_validated8,validated transition from ultralow regime
+r1_wc1p0_eta1p2em4,1.0,1.2e-4,verylow_grid,best neighborhood below 1.2 eV
+r1_wc1p2_eta1p2em4,1.2,1.2e-4,lowwc_grid,best low-wc required Q
+r1_wc1p5_eta1p2em4,1.5,1.2e-4,lowwc_grid,strong low-wc candidate
+r1_wc2p0_eta1p2em4,2.0,1.2e-4,lowwc_grid,strong transition-band candidate
+r1_wc2p15_eta8em5,2.15,8e-5,lowwc_grid,strong Q40-50 candidate
+r1_wc2p3_eta1p6em4,2.3,1.6e-4,micro_validated8,best validated micro-grid candidate
+r1_wc2p5_eta1p2em4,2.5,1.2e-4,resonant_fine,best resonant fine-grid candidate
+r1_wc3p5_eta1p2em4,3.5,1.2e-4,resonant_probe,near physical resonance-window candidate
+r1_wc5p0_eta1p2em4,5.0,1.2e-4,resonant_probe,wide-band physical control

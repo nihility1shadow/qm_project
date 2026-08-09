@@ -1,0 +1,7 @@
+﻿round,rank,selection_status,case_id,wc_eV,eta,required_until,required_Q,bottleneck_window,passes_required_interval,independent_repeats,ntraj_per_run
+5,1,retained,r4_wc0p12_eta2p8em5,0.12,2.8e-05,130.0,2.3233200362072384,120-130,False,6,8000000
+5,2,retained,r4_wc0p20_eta3p75em5,0.2,3.75e-05,130.0,2.2619299456521746,120-130,False,6,8000000
+5,3,eliminated,r4_wc0p12_eta2em5,0.12,2e-05,130.0,2.239608217760349,120-130,False,6,8000000
+5,4,eliminated,r4_wc0p20_eta2p5em5,0.2,2.5e-05,130.0,2.2180828436370366,120-130,False,6,8000000
+5,5,eliminated,r3_wc0p12_eta2p4em5,0.12,2.4e-05,130.0,2.131805637140917,120-130,False,6,8000000
+5,6,eliminated,r3_wc0p20_eta3p5em5,0.2,3.5e-05,130.0,2.079007749618373,120-130,False,6,8000000

@@ -1,0 +1,13 @@
+case_id,wc_eV,eta,parent_case_id,selection_reason
+r4_wc0p10_eta2em5,0.10,2.0e-5,r3_wc0p12_eta2p4em5,lower-ridge boundary check
+r4_wc0p12_eta2em5,0.12,2.0e-5,r3_wc0p12_eta2p4em5,eta below second-place parent
+r4_wc0p12_eta2p8em5,0.12,2.8e-5,r3_wc0p12_eta2p4em5,eta above second-place parent
+r4_wc0p15_eta2p5em5,0.15,2.5e-5,r3_wc0p15_eta3em5,eta below retained parent
+r4_wc0p16_eta2p8em5,0.16,2.8e-5,r3_wc0p20_eta3p5em5,lower local interpolation
+r4_wc0p18_eta3p15em5,0.18,3.15e-5,r3_wc0p20_eta3p5em5,near-winner interpolation
+r4_wc0p20_eta2p5em5,0.20,2.5e-5,r3_wc0p20_eta3p5em5,lower eta boundary
+r4_wc0p20_eta3em5,0.20,3.0e-5,r3_wc0p20_eta3p5em5,eta refinement below winner
+r4_wc0p20_eta3p25em5,0.20,3.25e-5,r3_wc0p20_eta3p5em5,eta refinement below winner
+r4_wc0p20_eta3p75em5,0.20,3.75e-5,r3_wc0p20_eta3p5em5,eta refinement above winner
+r4_wc0p22_eta3p85em5,0.22,3.85e-5,r3_wc0p20_eta3p5em5,upper local interpolation
+r4_wc0p24_eta4p2em5,0.24,4.2e-5,r3_wc0p25_eta5em5,upper-ridge interpolation

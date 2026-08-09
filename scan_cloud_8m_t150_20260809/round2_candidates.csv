@@ -1,0 +1,13 @@
+case_id,wc_eV,eta,parent_case_id,selection_reason
+r2_wc0p10_eta4em5,0.10,4e-5,r1_wc0p2_eta5em5,lower wc and eta around round-1 winner
+r2_wc0p20_eta4em5,0.20,4e-5,r1_wc0p2_eta5em5,eta refinement below round-1 winner
+r2_wc0p30_eta6em5,0.30,6e-5,r1_wc0p2_eta5em5,upper diagonal around round-1 winner
+r2_wc0p025_eta8em5,0.025,8e-5,r1_wc0p05_eta1em4,lower wc around second parent
+r2_wc0p05_eta1p2em4,0.05,1.2e-4,r1_wc0p05_eta1em4,eta refinement above second parent
+r2_wc0p10_eta1em4,0.10,1e-4,r1_wc0p05_eta1em4,higher wc around second parent
+r2_wc0p40_eta8em5,0.40,8e-5,r1_wc0p5_eta1em4,lower diagonal around third parent
+r2_wc0p50_eta1p2em4,0.50,1.2e-4,r1_wc0p5_eta1em4,eta refinement above third parent
+r2_wc0p65_eta1em4,0.65,1e-4,r1_wc0p5_eta1em4,higher wc around third parent
+r2_wc0p80_eta1em4,0.80,1e-4,r1_wc1p0_eta1p2em4,lower diagonal around fourth parent
+r2_wc1p0_eta1p4em4,1.00,1.4e-4,r1_wc1p0_eta1p2em4,eta refinement above fourth parent
+r2_wc1p2_eta1em4,1.20,1e-4,r1_wc1p0_eta1p2em4,higher wc and lower eta around fourth parent

@@ -1,0 +1,7 @@
+case_id,wc_eV,eta,parent_case_id,selection_reason
+r4_wc0p12_eta2em5,0.12,2.0e-5,r4_wc0p12_eta2em5,additional repeats for rank-1 validation
+r4_wc0p20_eta2p5em5,0.20,2.5e-5,r4_wc0p20_eta2p5em5,additional repeats for rank-2 validation
+r4_wc0p12_eta2p8em5,0.12,2.8e-5,r4_wc0p12_eta2p8em5,additional repeats for rank-3 validation
+r4_wc0p20_eta3p75em5,0.20,3.75e-5,r4_wc0p20_eta3p75em5,additional repeats for rank-4 validation
+r3_wc0p20_eta3p5em5,0.20,3.5e-5,r3_wc0p20_eta3p5em5,additional repeats for rank-5 validation
+r3_wc0p12_eta2p4em5,0.12,2.4e-5,r3_wc0p12_eta2p4em5,additional repeats for rank-6 validation

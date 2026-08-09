@@ -1,0 +1,13 @@
+case_id,wc_eV,eta,parent_case_id,selection_reason
+r3_wc0p12_eta2p4em5,0.12,2.4e-5,r2_wc0p20_eta4em5,lower ridge refinement
+r3_wc0p15_eta3em5,0.15,3.0e-5,r2_wc0p20_eta4em5,lower ridge refinement
+r3_wc0p18_eta3p6em5,0.18,3.6e-5,r2_wc0p20_eta4em5,near-winner ridge refinement
+r3_wc0p20_eta3p5em5,0.20,3.5e-5,r2_wc0p20_eta4em5,eta below winner
+r3_wc0p20_eta4p5em5,0.20,4.5e-5,r2_wc0p20_eta4em5,eta above winner
+r3_wc0p22_eta4p4em5,0.22,4.4e-5,r2_wc0p20_eta4em5,near-winner ridge refinement
+r3_wc0p25_eta5em5,0.25,5.0e-5,r2_wc0p20_eta4em5,mid-ridge refinement
+r3_wc0p28_eta5p6em5,0.28,5.6e-5,r2_wc0p30_eta6em5,mid-ridge refinement
+r3_wc0p32_eta6p4em5,0.32,6.4e-5,r2_wc0p30_eta6em5,upper ridge refinement
+r3_wc0p36_eta7p2em5,0.36,7.2e-5,r2_wc0p40_eta8em5,near-second ridge refinement
+r3_wc0p40_eta7em5,0.40,7.0e-5,r2_wc0p40_eta8em5,eta below second-place parent
+r3_wc0p45_eta9em5,0.45,9.0e-5,r2_wc0p40_eta8em5,upper ridge refinement
