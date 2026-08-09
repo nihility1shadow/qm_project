@@ -1,0 +1,1 @@
+binary=na_mpi_v061.outnNtraj=100000nNorb=10nNel=5nback_replicas=1n

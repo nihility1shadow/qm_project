@@ -36,6 +36,55 @@ double sepmb_kondo_degeneracy(const int Norb, const int Nel,
     : sepmb_binom(Nel, d+1)*sepmb_binom(Nvac-1, d);
 }
 
+int sepmb_sample_conditioned_count(const double *tail, const int nstep,
+    const int parity, const int kmin, const double u) {
+  int first = kmin;
+  if((first&1) != parity) first++;
+  if(first > nstep || tail[first] <= 0.0) return -1;
+
+  double target = u*tail[first];
+  for(int k=first; k<=nstep; k+=2) {
+    const double next_tail = k+2 <= nstep ? tail[k+2] : 0.0;
+    const double mass = tail[k] - next_tail;
+    if(target < mass || k+2 > nstep) return k;
+    target -= mass;
+  }
+  return -1;
+}
+
+int sepmb_sample_jump_times(const int nstep, const int njump, int *jumps) {
+  int selected = 0, remaining = njump;
+  for(int j=1; j<=nstep && remaining>0; j++) {
+    const int slots = nstep-j+1;
+    if(drand48()*slots < remaining) {
+      jumps[selected++] = j;
+      remaining--;
+    }
+  }
+  return remaining == 0 ? selected : -1;
+}
+
+vector<double> sepmb_binomial_cdf(const int nstep, const double probability) {
+  vector<double> cdf(nstep+1, 0.0);
+  long double mass = powl(1.0-probability, nstep);
+  long double total = mass;
+  cdf[0] = (double)total;
+  for(int k=1; k<=nstep; k++) {
+    mass *= (nstep-k+1)*probability/(k*(1.0-probability));
+    total += mass;
+    cdf[k] = (double)total;
+  }
+  if(total <= 0.0) return cdf;
+  for(double &value : cdf) value /= (double)total;
+  cdf.back() = 1.0;
+  return cdf;
+}
+
+int sepmb_sample_cdf(const vector<double> &cdf, const double u) {
+  const auto pos = lower_bound(cdf.begin(), cdf.end(), u);
+  return pos == cdf.end() ? (int)cdf.size()-1 : (int)(pos-cdf.begin());
+}
+
 
 }
 
@@ -180,10 +229,15 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   expfreqdt1 = expfreqdt[1];
   exphwdt1   = exphwdt[1];
 
-  int ntraj_local = ntraj, *jc = array1d<int>(nstep+1);
+  int ntraj_local = ntraj, trajectory_offset = 0,
+      *jc = array1d<int>(nstep+1);
 #ifdef _YYY_MPI_
-  ntraj_local = ntraj/nproc;
-  if(myid==0) ntraj_local += ntraj - ntraj_local*nproc;
+  const int trajectories_per_rank = ntraj/nproc,
+            trajectory_remainder = ntraj-trajectories_per_rank*nproc;
+  ntraj_local = trajectories_per_rank;
+  if(myid==0) ntraj_local += trajectory_remainder;
+  trajectory_offset = myid == 0 ? 0
+      : trajectory_remainder + myid*trajectories_per_rank;
   const double Lfct = 1.0/nproc;
 #else
   const double Lfct = 1.0;
@@ -198,7 +252,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   // the initial average
   const char *env_tmax = getenv("SEP_MB_TMAX"),
              *env_nwf  = getenv("SEP_MB_NWF"),
-             *env_measure_stride = getenv("SEP_MB_MEASURE_STRIDE");
+             *env_measure_stride = getenv("SEP_MB_MEASURE_STRIDE"),
+             *env_back_replicas = getenv("SEP_MB_BACK_REPLICAS"),
+             *env_stratify_forward = getenv("SEP_MB_STRATIFY_FORWARD_COUNT");
   double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
   int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
   if(env_nwf) nwf = atoi(env_nwf);
@@ -206,6 +262,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   if(nwf > nstep) nwf = nstep;
   int forced_measure_stride = env_measure_stride ? atoi(env_measure_stride) : 0;
   if(forced_measure_stride < 0) forced_measure_stride = 0;
+  int back_replicas = env_back_replicas ? atoi(env_back_replicas) : 4;
+  if(back_replicas < 1) back_replicas = 1;
+  if(back_replicas > 64) back_replicas = 64;
+  const bool stratify_forward = env_stratify_forward
+      ? atoi(env_stratify_forward) != 0 : false;
   double gap = 0.0;
   for(int a : S0) {
     for(int b=0; b<Norb; b++) {
@@ -252,20 +313,38 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       Jmax     = nstep + 1;
   csproj(wgt_init*Lfct, alp_init, wgt_init, alp_init, excited0, S0, prb[0]);
 
-  const double lambda = abs(cpl[1]),
-               rate   = sqrtNel*sqrtNvac*lambda*dt;
+  const double lambda          = abs(cpl[1]),
+               jump_strength   = sqrtNel*sqrtNvac*lambda*dt,
+               jump_probability = jump_strength/(1.0+jump_strength),
+               log_scale       = log1p(jump_strength),
+               inv_back_replicas = 1.0/back_replicas;
   double p0, pt,  inv_ntraj = 1.0/ntraj,
-         *sclf       = array1d<double>(nstep+1);
+          *sclf       = array1d<double>(nstep+1);
   int    *jumps_back = array1d<int>(Jmax),
+         *jumps_forward = array1d<int>(Jmax),
+         *forward_jump_schedule = array1d<int>(Jmax),
          idx;
-  for(int j=0; j<=nstep;  j++) sclf[j]       = exp(rate*j);
+  for(int j=0; j<=nstep;  j++) sclf[j] = exp(log_scale*j);
+
+  const vector<double> forward_count_cdf = stratify_forward
+      ? sepmb_binomial_cdf(nstep, jump_probability) : vector<double>();
+  double forward_count_shift = 0.0;
+  if(stratify_forward) {
+#ifdef _YYY_MPI_
+    if(myid==master) forward_count_shift = drand48();
+    MPI_Bcast(&forward_count_shift, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+#else
+    forward_count_shift = drand48();
+#endif
+  }
 
   double ***back_accept = array3d<double>(nwf+1, 2, nwf+2);
   for(int jt=0; jt<=nwf; jt++) {
     double *pk = array1d<double>(jt+1);
-    pk[0] = pow(1.0-rate, jt);
+    pk[0] = pow(1.0-jump_probability, jt);
     for(int k=1; k<=jt; k++) {
-      pk[k] = pk[k-1]*(jt-k+1)*rate/(k*(1.0-rate));
+      pk[k] = pk[k-1]*(jt-k+1)*jump_probability/
+              (k*(1.0-jump_probability));
     }
     for(int parity=0; parity<2; parity++) {
       double tail = 0.0;
@@ -302,6 +381,20 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         nj      = 0,        //number of jumps in the forward  path;
         sign, found;
 
+    if(stratify_forward) {
+      bzero(forward_jump_schedule, Jmax*sizeof(int));
+      const double count_u = fmod(forward_count_shift +
+          (trajectory_offset+n)*1.0/ntraj, 1.0);
+      const int nj_forward = sepmb_sample_cdf(forward_count_cdf, count_u);
+      if(sepmb_sample_jump_times(nstep, nj_forward, jumps_forward) != nj_forward) {
+        cerr<<"failed to sample stratified forward jump times.\n";
+        abort();
+      }
+      for(int k=0; k<nj_forward; k++) {
+        forward_jump_schedule[jumps_forward[k]] = 1;
+      }
+    }
+
 #ifdef _CHECK_PATH_
     path.clear();
 #endif
@@ -309,7 +402,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     for(int j=1; j<=nstep; j++) {
       //printf("    time: %4d", j);
       // jump seperatedly, switch the state between 0 and idx
-      if(drand48() < rate) {
+      if(stratify_forward ? forward_jump_schedule[j]
+                          : drand48() < jump_probability) {
         if((int)state.size() != Nel || (int)vac.size() != Nvac ||
            (excited && state.find(0) == state.end()) ||
            (!excited && state.find(0) != state.end())) {
@@ -435,163 +529,149 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         if(nj_min > j) continue;
         double back_accept_prb = back_accept[j][nj&1][nj_min];
         if(back_accept_prb <= 0.0) continue;
-#ifndef _CHECK_PATH_
-        /* 
-         * generate a Poisson process with nj_back jumps.
-         * Note that: 
-         *   1. nj_back should have the same parity as nj
-         *   2. nj_back is sufficiently big to transform the system from S0 to state
-         */
-        int nj_back;
-        do {
-          nj_back = 0;
-          bzero(jumps_back, Jmax*sizeof(int));
-          for(int k=1; k<=j; k++)  if(drand48() < rate) jumps_back[nj_back++] = k;
-        } while((nj_back+nj)%2 || nj_back<nj_min);
-
-        int status = 0, fails=0;
-        //print_set("state is: ", state, "\n");
-        do {
-          status = (sampler.*PS[excited0][excited])(nj_back, S0, state, path);
-          fails -= status;
-        } while(status<0 && fails < 5);
-        if(status<0) continue;
-#else
-        int nj_back = nj;
-        cout<<"    "<<nj<<" jumps in the forward path"<<endl;
-        print_set("     state : ", state, "\n");
-        cout<<"    the backward path, t = "<<j<<endl;
-#endif
-
-        //the backward paropagation, we should store the forward results first
         dcomplex alp_for = alp,
                  wgt_for = wgt;
         set<int> state_for = state;
-        int offset  = 0;
-        alp     = alp_init;
-        wgt     = wgt_init;
-        excited = excited0;
-        state   = S0;
-        bool valid_path = ((int)path.size() == nj_back);
-        // vac is no longer needed in backward propagation
-        //set_difference(orbitals.begin(), orbitals.end(), state.begin(), state.end(), 
-        //           inserter(vac, vac.begin()));
-        for(int k=0; valid_path && k<nj_back; k++) {
-          //propagate the time offset -> jumps_back[k];
-          int nadvance = jumps_back[k]-1-offset;
-          if(excited) {
-            // It is in the excited state, propagation with 1/2 m w^2 (x-delx)^2
-            p0   = fpt*imag(alp);
-            alp  = (alp-dalp)*expfreqdt[nadvance] + dalp;
-            pt   = fpt*imag(alp);
-            wgt *= exphwdt[nadvance]*exp(0.5*I*(p0-pt)*delx);
-          } else {
-            // It is in the continuum state, propagation with 1/2 m w^2 x^2
-            wgt *= exphwdt[nadvance];
-            alp *= expfreqdt[nadvance];
-          }
-          for(int l : state) wgt *= expEndt[nadvance][l];
-          offset = jumps_back[k]-1;
+        const double count_shift = drand48();
+        for(int iback=0; iback<back_replicas; iback++) {
+#ifndef _CHECK_PATH_
+          // Randomly shifted stratification keeps every replica marginally
+          // uniform while spreading replicas over the conditional jump-count CDF.
+          const double count_u = fmod(count_shift +
+              iback*inv_back_replicas, 1.0);
+          int nj_back = sepmb_sample_conditioned_count(
+              back_accept[j][nj&1], j, nj&1, nj_min, count_u);
+          if(nj_back < 0) continue;
+          bzero(jumps_back, Jmax*sizeof(int));
+          if(sepmb_sample_jump_times(j, nj_back, jumps_back) != nj_back) continue;
 
-          //deal with the k-th jump
-          //idx in this block indicate the orbital involved in the quantum jump
-          if(path[k].first < 0 || path[k].first >= Norb ||
-             path[k].second < 0 || path[k].second >= Norb ||
-             state.find(path[k].first) == state.end() ||
-             state.find(path[k].second) != state.end()) {
-            valid_path = false;
-            break;
-          }
-          int pos = 0;
-          if(excited) {
-            state.erase(path[k].first);
-            state.insert(path[k].second);
-            idx = path[k].second;
-            auto it = state.begin();
-            for(; it != state.end() && *it != idx; ++it, ++pos) {}
-            if(it == state.end() || (int)state.size() != Nel) {
+          int status = 0, fails = 0;
+          do {
+            status = (sampler.*PS[excited0][excited_for])(
+                nj_back, S0, state_for, path);
+            fails -= status;
+          } while(status<0 && fails < 5);
+          if(status<0) continue;
+#else
+          int nj_back = nj;
+          cout<<"    "<<nj<<" jumps in the forward path"<<endl;
+          print_set("     state : ", state_for, "\n");
+          cout<<"    the backward path, t = "<<j<<endl;
+#endif
+
+          int offset = 0;
+          alp     = alp_init;
+          wgt     = wgt_init;
+          excited = excited0;
+          state   = S0;
+          bool valid_path = ((int)path.size() == nj_back);
+          for(int k=0; valid_path && k<nj_back; k++) {
+            const int nadvance = jumps_back[k]-1-offset;
+            if(excited) {
+              p0   = fpt*imag(alp);
+              alp  = (alp-dalp)*expfreqdt[nadvance] + dalp;
+              pt   = fpt*imag(alp);
+              wgt *= exphwdt[nadvance]*exp(0.5*I*(p0-pt)*delx);
+            } else {
+              wgt *= exphwdt[nadvance];
+              alp *= expfreqdt[nadvance];
+            }
+            for(int l : state) wgt *= expEndt[nadvance][l];
+            offset = jumps_back[k]-1;
+
+            if(path[k].first < 0 || path[k].first >= Norb ||
+               path[k].second < 0 || path[k].second >= Norb ||
+               state.find(path[k].first) == state.end() ||
+               state.find(path[k].second) != state.end()) {
               valid_path = false;
               break;
             }
-          } else {
-            idx = path[k].first;
-            auto it = state.begin();
-            for(; it != state.end() && *it != idx; ++it, ++pos) {}
-            if(it == state.end()) {
-              valid_path = false;
-              break;
+            int pos = 0;
+            if(excited) {
+              state.erase(path[k].first);
+              state.insert(path[k].second);
+              idx = path[k].second;
+              auto it = state.begin();
+              for(; it != state.end() && *it != idx; ++it, ++pos) {}
+              if(it == state.end() || (int)state.size() != Nel) {
+                valid_path = false;
+                break;
+              }
+            } else {
+              idx = path[k].first;
+              auto it = state.begin();
+              for(; it != state.end() && *it != idx; ++it, ++pos) {}
+              if(it == state.end()) {
+                valid_path = false;
+                break;
+              }
+              state.erase(path[k].first);
+              state.insert(path[k].second);
+              if((int)state.size() != Nel) {
+                valid_path = false;
+                break;
+              }
             }
-            state.erase(path[k].first);
-            state.insert(path[k].second);
-            if((int)state.size() != Nel) {
-              valid_path = false;
-              break;
-            }
-          }
-          sign = eo[pos%2];
+            sign = eo[pos%2];
 #ifdef _TRACE_STATE_
-          printf("  backward %2d-th jump for time %d, ", k, j);
-          printf(   "     sign = %+d, switch %4d <-> %4d : \n", sign, path[k].first, path[k].second);
+            printf("  backward %2d-th jump for time %d, ", k, j);
+            printf("     sign = %+d, switch %4d <-> %4d : \n",
+                   sign, path[k].first, path[k].second);
 #endif
-          wgt *= sign*sqrtfct[excited];
-          excited = 1 - excited;
-        }
+            wgt *= sign*sqrtfct[excited];
+            excited = 1-excited;
+          }
 
-        if(!valid_path) {
-          alp = alp_for;
-          wgt = wgt_for;
-          state = state_for;
-          excited = excited_for;
-          continue;
-        }
+          if(!valid_path) {
+            alp = alp_for;
+            wgt = wgt_for;
+            state = state_for;
+            excited = excited_for;
+            continue;
+          }
 
-        // Full many-body QM includes both electronic classes.  Do not discard
-        // charge-transfer sectors here; they carry the leading one-jump
-        // occupation of initially vacant orbitals.
-        //propagate the time jump_bck[nj_back]->nstep;
-        if(excited) {
-          // It is in the excited state, propagation with 1/2 m w^2 (x-delx)^2
-          //printf("        propagate at state = %4d\n", 0);
-          p0   = fpt*imag(alp);
-          alp  = (alp-dalp)*expfreqdt[j-offset] + dalp;
-          pt   = fpt*imag(alp);
-          wgt *= exphwdt[j-offset]*exp(0.5*I*(p0-pt)*delx);
-        } else {
-          // It is in the continuum state, propagation with 1/2 m w^2 x^2
-          //printf("        propagate at state = %4d\n", idx);
-          wgt *= exphwdt[j-offset];
-          alp *= expfreqdt[j-offset];
-        }
-        for(int l : state) wgt *= expEndt[j-offset][l];
+          if(excited) {
+            p0   = fpt*imag(alp);
+            alp  = (alp-dalp)*expfreqdt[j-offset] + dalp;
+            pt   = fpt*imag(alp);
+            wgt *= exphwdt[j-offset]*exp(0.5*I*(p0-pt)*delx);
+          } else {
+            wgt *= exphwdt[j-offset];
+            alp *= expfreqdt[j-offset];
+          }
+          for(int l : state) wgt *= expEndt[j-offset][l];
 
-        if(!offset) offset = j;
-        double measure = 1.0; // jumps_back is already sampled with a lambda-dependent Poisson rate
-        double endpoint_prb = excited0 ? sampler.get_Ptd(nj_back, d_kondo)
-                                       : sampler.get_Qtd(nj_back, d_kondo);
-        if(endpoint_prb <= 0.0) {
-          alp = alp_for;
-          wgt = wgt_for;
-          state = state_for;
-          excited = excited_for;
-          continue;
-        }
-        measure *= back_accept_prb*endpoint_prb*sclf[j-offset];
-        if(excited_for != excited) {
-          cerr<<"parity mismatch between the forward and backward path.\n";
-          abort();
-        }
+          const double endpoint_prb = excited0
+              ? sampler.get_Ptd(nj_back, d_kondo)
+              : sampler.get_Qtd(nj_back, d_kondo);
+          if(endpoint_prb <= 0.0) {
+            alp = alp_for;
+            wgt = wgt_for;
+            state = state_for;
+            excited = excited_for;
+            continue;
+          }
+          const double measure = back_accept_prb*endpoint_prb*sclf[j];
+          if(excited_for != excited) {
+            cerr<<"parity mismatch between the forward and backward path.\n";
+            abort();
+          }
 #ifdef _CHECK_PATH_
-        print_set("     state : ", state, "\n");
-        printf("wgt : %+1.16e %+1.16e %+1.16e %+1.16e\n", real(wgt_for), imag(wgt_for), real(wgt), imag(wgt));
-        printf("alp : %+1.16e %+1.16e %+1.16e %+1.16e\n", real(alp_for), imag(alp_for), real(alp), imag(alp));
+          print_set("     state : ", state, "\n");
+          printf("wgt : %+1.16e %+1.16e %+1.16e %+1.16e\n",
+                 real(wgt_for), imag(wgt_for), real(wgt), imag(wgt));
+          printf("alp : %+1.16e %+1.16e %+1.16e %+1.16e\n",
+                 real(alp_for), imag(alp_for), real(alp), imag(alp));
 #endif
-        csproj(wgt_for*Iton[nj%4]*sclf[j]*inv_ntraj, alp_for, wgt*Iton[nj_back%4]*measure, alp, excited, state, prb[iprb]);
+          csproj(wgt_for*Iton[nj%4]*sclf[j]*inv_ntraj*inv_back_replicas,
+                 alp_for, wgt*Iton[nj_back%4]*measure, alp,
+                 excited, state, prb[iprb]);
 
-        //restore the forward parameters
-        alp = alp_for;
-        wgt = wgt_for;
-        state = state_for;
-        excited = excited_for;
+          alp = alp_for;
+          wgt = wgt_for;
+          state = state_for;
+          excited = excited_for;
+        }
       }
     }
 	}
@@ -612,9 +692,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     char fnm[256];
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
-    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.60 fullmb-kondo adaptive-t500 active\n");
+    fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.61 exact-bernoulli stratified-backward active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
+    fprintf(FL, "#sampling: jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d\n",
+            jump_strength, jump_probability, log_scale, back_replicas,
+            stratify_forward ? 1 : 0);
     fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e forced_stride=%d\n",
             gap, period_steps, nmeas, nwf, nwf*dt, forced_measure_stride);
     double *rlt = array1d<double>(Norb+3);
@@ -656,6 +739,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   free2d(prb);
   free1d(measure_slot);
   free1d(sclf);
+  free1d(jumps_back);
+  free1d(jumps_forward);
+  free1d(forward_jump_schedule);
   free1d(jc);
 
 	return;
