@@ -1,0 +1,56 @@
+[
+  {
+    "window": "0-25",
+    "rms_new_8m_minus_old_8m": 7.742584354936782e-06,
+    "max_abs_new_8m_minus_old_8m": 4.164908963399938e-05,
+    "rms_new_minus_old_mean": 7.515770359315828e-06,
+    "max_abs_new_minus_old_mean": 3.7827637535459147e-05,
+    "old_repeat_noise_rms": 1.327766362987264e-06,
+    "rms_difference_over_old_noise": 5.6604614854126405
+  },
+  {
+    "window": "25-50",
+    "rms_new_8m_minus_old_8m": 2.3775866343897813e-05,
+    "max_abs_new_8m_minus_old_8m": 0.00013772729100325343,
+    "rms_new_minus_old_mean": 2.3017113944294514e-05,
+    "max_abs_new_minus_old_mean": 0.00010759099145618567,
+    "old_repeat_noise_rms": 5.684668317395151e-06,
+    "rms_difference_over_old_noise": 4.048980988716946
+  },
+  {
+    "window": "50-75",
+    "rms_new_8m_minus_old_8m": 4.2220077152291926e-05,
+    "max_abs_new_8m_minus_old_8m": 0.00020216156139729602,
+    "rms_new_minus_old_mean": 4.165523759963982e-05,
+    "max_abs_new_minus_old_mean": 0.00017082183365624282,
+    "old_repeat_noise_rms": 1.2692140162910173e-05,
+    "rms_difference_over_old_noise": 3.2819711305558665
+  },
+  {
+    "window": "75-100",
+    "rms_new_8m_minus_old_8m": 6.910991192347802e-05,
+    "max_abs_new_8m_minus_old_8m": 0.0003683986509505077,
+    "rms_new_minus_old_mean": 6.412330304383616e-05,
+    "max_abs_new_minus_old_mean": 0.0002607569614313521,
+    "old_repeat_noise_rms": 2.5536225036163204e-05,
+    "rms_difference_over_old_noise": 2.511072131962643
+  },
+  {
+    "window": "100-125",
+    "rms_new_8m_minus_old_8m": 9.39148137797301e-05,
+    "max_abs_new_8m_minus_old_8m": 0.0005425076542944218,
+    "rms_new_minus_old_mean": 9.308334055879216e-05,
+    "max_abs_new_minus_old_mean": 0.00041379079497372295,
+    "old_repeat_noise_rms": 4.515568094019165e-05,
+    "rms_difference_over_old_noise": 2.0613871526393397
+  },
+  {
+    "window": "125-150",
+    "rms_new_8m_minus_old_8m": 0.00015088693951684177,
+    "max_abs_new_8m_minus_old_8m": 0.0007326017066157098,
+    "rms_new_minus_old_mean": 0.00013533765134341214,
+    "max_abs_new_minus_old_mean": 0.0005885633051826433,
+    "old_repeat_noise_rms": 7.522564468746503e-05,
+    "rms_difference_over_old_noise": 1.799089285385196
+  }
+]

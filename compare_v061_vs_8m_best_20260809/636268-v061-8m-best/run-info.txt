@@ -1,0 +1,1 @@
+binary=na_mpi_v061.outnNtraj=8000000nNorb=10nNel=5nwc_eV=0.12neta=2.8e-5ndelE_eV=-2.5nnstep=300ndt=0.5ntmax=150nback_replicas=4nstratify_forward=0n
