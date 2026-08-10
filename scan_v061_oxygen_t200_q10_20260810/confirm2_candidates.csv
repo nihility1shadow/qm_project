@@ -1,0 +1,3 @@
+case_id,param_id,origin,random_seed,wc_eV,eta,back_replicas,stratify_forward
+d01_random,d01_random,random,20260816,3.389460,0.000029610,12,1
+d02_random,d02_random,random,20260816,3.395537,0.000031358,12,1

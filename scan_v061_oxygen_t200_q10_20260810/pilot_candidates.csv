@@ -1,0 +1,8 @@
+﻿"case_id","param_id","origin","random_seed","wc_eV","eta","back_replicas"
+"p01_center_b04","center","replica_control","0","4","0.00017","4"
+"p02_center_b08","center","replica_control","0","4","0.00017","8"
+"p03_center_b12","center","replica_control","0","4","0.00017","12"
+"p04_center_b16","center","replica_control","0","4","0.00017","16"
+"p05_random_01","random01","random","20260810","4.145914","0.00012438","12"
+"p06_random_02","random02","random","20260810","3.509066","0.000124874","12"
+"p07_random_03","random03","random","20260810","4.689026","0.000207282","12"

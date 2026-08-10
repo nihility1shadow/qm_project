@@ -1,0 +1,14 @@
+case_id,param_id,origin,random_seed,wc_eV,eta,back_replicas,stratify_forward
+f01_grid,f01_grid,regular_grid,0,3.2,0.000034,12,1
+f02_grid,f02_grid,regular_grid,0,3.2,0.000040,12,1
+f03_grid,f03_grid,regular_grid,0,3.2,0.000046,12,1
+f04_grid,f04_grid,regular_grid,0,3.4,0.000034,12,1
+f05_grid,f05_grid,regular_grid,0,3.4,0.000040,12,1
+f06_grid,f06_grid,regular_grid,0,3.4,0.000046,12,1
+f07_grid,f07_grid,regular_grid,0,3.6,0.000034,12,1
+f08_grid,f08_grid,regular_grid,0,3.6,0.000040,12,1
+f09_grid,f09_grid,regular_grid,0,3.6,0.000046,12,1
+f10_random,f10_random,random,20260813,3.744152,0.000035560,12,1
+f11_random,f11_random,random,20260813,3.680172,0.000039056,12,1
+f12_random,f12_random,random,20260813,3.188146,0.000032180,12,1
+f13_random,f13_random,random,20260813,3.633074,0.000038606,12,1

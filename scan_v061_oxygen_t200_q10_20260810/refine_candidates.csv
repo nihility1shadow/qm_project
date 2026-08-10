@@ -1,0 +1,17 @@
+case_id,param_id,origin,random_seed,wc_eV,eta,back_replicas,stratify_forward
+r01_grid,r01_grid,regular_grid,0,3.4,0.000025,12,1
+r02_grid,r02_grid,regular_grid,0,3.4,0.000040,12,1
+r03_grid,r03_grid,regular_grid,0,3.4,0.000055,12,1
+r04_grid,r04_grid,regular_grid,0,3.8,0.000025,12,1
+r05_grid,r05_grid,regular_grid,0,3.8,0.000040,12,1
+r06_grid,r06_grid,regular_grid,0,3.8,0.000055,12,1
+r07_grid,r07_grid,regular_grid,0,4.2,0.000025,12,1
+r08_grid,r08_grid,regular_grid,0,4.2,0.000040,12,1
+r09_grid,r09_grid,regular_grid,0,4.2,0.000055,12,1
+r10_grid,r10_grid,regular_grid,0,4.6,0.000025,12,1
+r11_grid,r11_grid,regular_grid,0,4.6,0.000040,12,1
+r12_grid,r12_grid,regular_grid,0,4.6,0.000055,12,1
+r13_random,r13_random,random,20260812,3.295605,0.000033789,12,1
+r14_random,r14_random,random,20260812,4.562075,0.000058550,12,1
+r15_random,r15_random,random,20260812,4.302026,0.000038846,12,1
+r16_random,r16_random,random,20260812,4.702414,0.000046247,12,1

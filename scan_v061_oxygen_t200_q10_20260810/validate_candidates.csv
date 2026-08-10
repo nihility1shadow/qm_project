@@ -1,0 +1,6 @@
+case_id,param_id,origin,random_seed,wc_eV,eta,back_replicas,stratify_forward
+v01_known,v01_known,known_best,0,3.2,0.000040,12,1
+v02_known,v02_known,known_best,0,3.4,0.000040,12,1
+v03_known,v03_known,known_neighbor,0,3.4,0.000034,12,1
+v04_random,v04_random,random,20260814,3.488949,0.000042822,12,1
+v05_random,v05_random,random,20260814,3.363696,0.000032474,12,1
