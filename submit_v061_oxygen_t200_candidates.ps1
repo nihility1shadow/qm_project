@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("refine", "fine", "validate", "confirm", "confirm2")]
+    [ValidateSet("refine", "fine", "validate", "confirm", "confirm2", "confirm3", "confirm4")]
     [string]$Stage,
 
     [Parameter(Mandatory = $true)]
@@ -13,7 +13,10 @@ param(
     [int]$Repeats = 3,
 
     [ValidateRange(1, 256)]
-    [int]$Ntasks = 128
+    [int]$Ntasks = 128,
+
+    [ValidateRange(0, 32)]
+    [int]$MaxConcurrent = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -53,6 +56,7 @@ foreach ($candidate in $candidates) {
 }
 
 $rows = [System.Collections.Generic.List[object]]::new()
+$submittedJobIds = [System.Collections.Generic.List[string]]::new()
 if (Test-Path $SubmissionFile) {
     foreach ($row in Import-Csv $SubmissionFile) { $rows.Add($row) }
 }
@@ -87,6 +91,14 @@ function Already-Submitted([string]$CaseId, [string]$Method, [int]$Repeat) {
     })
 }
 
+function Get-DependencyOption {
+    if ($MaxConcurrent -le 0 -or $submittedJobIds.Count -lt $MaxConcurrent) {
+        return ""
+    }
+    $predecessor = $submittedJobIds[$submittedJobIds.Count - $MaxConcurrent]
+    return "--dependency=afterany:$predecessor "
+}
+
 $candidateNumber = 0
 foreach ($candidate in $candidates) {
     $candidateNumber++
@@ -107,8 +119,9 @@ foreach ($candidate in $candidates) {
             '$LD_LIBRARY_PATH' + "; mpirun --bind-to core --map-by core " +
             "-np $Ntasks $RemoteRoot/na_mpi_v061.out 10 1 $Ntraj 10 5 " +
             "> program.out 2>&1"
+        $dependencyOption = Get-DependencyOption
         $remote = "cd $RemoteRoot && mkdir -p $runDir && " +
-            "sbatch --parsable --partition=cmh --ntasks=$Ntasks " +
+            "sbatch --parsable $dependencyOption--partition=cmh --exclude=nd-022 --ntasks=$Ntasks " +
             "--cpus-per-task=1 --mem-per-cpu=1G --time=12:00:00 " +
             "--job-name=$jobName --chdir=$runDir " +
             "--export=ALL,AHM_WC_EV=$wc,AHM_ETA=$eta,AHM_DELE_EV=$DelE," +
@@ -116,6 +129,7 @@ foreach ($candidate in $candidates) {
             "SEP_MB_STRATIFY_FORWARD_COUNT=$stratifyForward " +
             "--output=slurm-%j.out --error=slurm-%j.err --wrap='$wrap'"
         $jobId = Invoke-Remote $remote
+        $submittedJobIds.Add($jobId)
         Save-Row ([pscustomobject]@{
             stage = $Stage; case_id = $caseId; param_id = $candidate.param_id
             origin = $candidate.origin; random_seed = $candidate.random_seed
@@ -130,11 +144,13 @@ foreach ($candidate in $candidates) {
 
     if (-not (Already-Submitted $caseId "qm" 0)) {
         $jobName = "qm$($Stage.Substring(0,1)){0:d2}" -f $candidateNumber
-        $remote = "cd $RemoteRoot && sbatch --parsable --ntasks=1 " +
+        $dependencyOption = Get-DependencyOption
+        $remote = "cd $RemoteRoot && sbatch --parsable $dependencyOption--exclude=nd-022 --ntasks=1 " +
             "--job-name=$jobName --export=ALL,AHM_WC_EV=$wc," +
             "AHM_ETA=$eta,AHM_DELE_EV=$DelE,AHM_NSTEP=$Nstep " +
             "run_mpi_cloud.slurm 100 10 5 0"
         $jobId = Invoke-Remote $remote
+        $submittedJobIds.Add($jobId)
         Save-Row ([pscustomobject]@{
             stage = $Stage; case_id = $caseId; param_id = $candidate.param_id
             origin = $candidate.origin; random_seed = $candidate.random_seed

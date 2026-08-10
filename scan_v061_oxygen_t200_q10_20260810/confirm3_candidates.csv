@@ -1,0 +1,6 @@
+case_id,param_id,origin,random_seed,wc_eV,eta,back_replicas,stratify_forward
+e01_best_b16,e01_best_b16,replica_control,0,3.389460,2.9610e-05,16,1
+e02_best_b24,e02_best_b24,replica_control,0,3.389460,2.9610e-05,24,1
+e03_random_b16,e03_random_b16,random,20260817,3.372814,2.8427e-05,16,1
+e04_random_b24,e04_random_b24,random,20260817,3.407263,3.0376e-05,24,1
+e05_random_b32,e05_random_b32,random,20260817,3.351907,3.1184e-05,32,1

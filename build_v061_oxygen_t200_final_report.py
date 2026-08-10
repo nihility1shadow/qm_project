@@ -9,7 +9,17 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parent
 SCAN = ROOT / "scan_v061_oxygen_t200_q10_20260810"
-STAGES = ("pilot", "screen", "refine", "fine", "validate", "confirm", "confirm2")
+STAGES = (
+    "pilot",
+    "screen",
+    "refine",
+    "fine",
+    "validate",
+    "confirm",
+    "confirm2",
+    "confirm3",
+    "confirm4",
+)
 
 
 def read_rows(path: Path) -> list[dict[str, str]]:
@@ -31,7 +41,10 @@ def main() -> None:
     all_rows.sort(key=lambda row: float(row["Q_0_150"]), reverse=True)
     write_rows(SCAN / "all_stage_metrics_final.csv", all_rows)
 
-    high_path = [row for row in all_rows if row["stage"] in {"confirm", "confirm2"}]
+    high_path = [
+        row for row in all_rows
+        if row["stage"] in {"confirm", "confirm2", "confirm4"}
+    ]
     high_path.sort(key=lambda row: float(row["Q_0_150"]), reverse=True)
     final_rows: list[dict[str, object]] = []
     for rank, row in enumerate(high_path, 1):
@@ -84,7 +97,7 @@ def main() -> None:
         },
         "sampling": {
             "version": "v0.61",
-            "back_replicas": 12,
+            "back_replicas": int(best["back_replicas"]),
             "stratify_forward_count": True,
             "independent_repeats": 3,
         },
@@ -92,18 +105,30 @@ def main() -> None:
             "stages": list(STAGES),
             "evaluated_parameter_cases": len(all_rows),
             "high_path_cases": len(final_rows),
-            "random_seeds": [20260810, 20260811, 20260812, 20260813, 20260814, 20260815, 20260816],
+            "random_seeds": [
+                20260810,
+                20260811,
+                20260812,
+                20260813,
+                20260814,
+                20260815,
+                20260816,
+                20260817,
+            ],
         },
         "best": best,
         "target_achieved": bool(best["passes_Q0_150_gt_10"]),
-        "Q_shortfall": 10.0 - float(best["Q_0_150"]),
+        "Q_shortfall": max(0.0, 10.0 - float(best["Q_0_150"])),
+        "Q_margin": float(best["Q_0_150"]) - 10.0,
         "runtime_seconds": {
             "runs": len(runtime_seconds),
             "minimum": min(runtime_seconds),
             "maximum": max(runtime_seconds),
             "mean": sum(runtime_seconds) / len(runtime_seconds),
         },
-        "best_plot": str(SCAN / "confirm2_plots" / "rank01_d01_random.png"),
+        "best_plot": str(
+            SCAN / f"{best['stage']}_plots" / f"rank01_{best['case_id']}.png"
+        ),
     }
     (SCAN / "FINAL_SUMMARY.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
@@ -118,6 +143,7 @@ def main() -> None:
         linewidth=0.6,
     )
     label_offsets = {
+        "f01_random_promoted": (7, -31, "left"),
         "d01_random": (5, 6, "left"),
         "c02_random_prev": (-5, 8, "right"),
         "d02_random": (-6, 8, "right"),
@@ -127,9 +153,12 @@ def main() -> None:
     }
     for row in final_rows:
         eta_value = float(row["eta"]) * 1e5
-        dx, dy, horizontal_alignment = label_offsets[str(row["case_id"])]
+        dx, dy, horizontal_alignment = label_offsets.get(
+            str(row["case_id"]), (6, 7, "left")
+        )
+        ntraj_millions = int(row["ntraj_per_repeat"]) / 1_000_000
         axis_q.annotate(
-            str(row["case_id"]),
+            f"{row['case_id']}\n{ntraj_millions:g}M, B={row['back_replicas']}",
             (eta_value, float(row["Q_0_150"])),
             xytext=(dx, dy),
             textcoords="offset points",
@@ -169,8 +198,8 @@ def main() -> None:
     axis_windows.grid(axis="y", color="#e2e2e2", lw=0.6)
     axis_windows.legend()
     fig.suptitle(
-        "v0.61 oxygen scan | Ntraj/run=24,000,000; repeats=3; "
-        "total forward/case=72,000,000; back replicas=12"
+        "v0.61 oxygen scan | repeats=3; point labels show "
+        "Ntraj/run and backward replicas B"
     )
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     fig.savefig(SCAN / "high_path_final_comparison.png", dpi=190)
@@ -205,19 +234,19 @@ def main() -> None:
 
 ## Conclusion
 
-The best measured conservative Q is {best['Q_0_150']:.6f}, which is below 10 by
-{10.0 - float(best['Q_0_150']):.6f}. Parameter tuning reduced the projected
-per-run requirement to {best['projected_ntraj_per_repeat_Q10_0_150']:,}, but
-that still exceeds the 24,000,000 path cap. The remaining limitation is the
-long-time forward-path variance, especially in 100-150 a.u.; further random
-wc/eta tuning is not justified without another variance-reduction change.
+The best measured conservative Q is {best['Q_0_150']:.6f}, exceeding the
+Q=10 target by {float(best['Q_0_150']) - 10.0:.6f}, while using
+{best['ntraj_per_repeat']:,} forward paths per run. This is below the
+24,000,000 path cap. The 100-150 a.u. segment remains the weakest interval
+at Q={best['Q_100_150']:.6f}; the stated target applies to the aggregate
+0-150 a.u. interval rather than every sub-window.
 
 ## Files
 
-- `high_path_final_metrics.csv`: six 24M-path candidates
+- `high_path_final_metrics.csv`: formal high-path validation candidates
 - `all_stage_metrics_final.csv`: all {len(all_rows)} evaluated cases
 - `high_path_final_comparison.png`: high-path Q comparison
-- `confirm2_plots/rank01_d01_random.png`: all-orbital best-case plot
+- `{best['stage']}_plots/rank01_{best['case_id']}.png`: all-orbital best-case plot
 - `high_path_runtime.csv`: actual scheduler runtimes
 """
     (SCAN / "FINAL_RESULTS.md").write_text(report, encoding="ascii")

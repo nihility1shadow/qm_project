@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("pilot", "screen", "refine", "fine", "validate", "confirm", "confirm2")]
+    [ValidateSet("pilot", "screen", "refine", "fine", "validate", "confirm", "confirm2", "confirm3", "confirm4")]
     [string]$Stage = "pilot"
 )
 
