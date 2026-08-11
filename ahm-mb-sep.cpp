@@ -270,23 +270,30 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_back_replicas = getenv("SEP_MB_BACK_REPLICAS"),
              *env_stratify_forward = getenv("SEP_MB_STRATIFY_FORWARD_COUNT"),
              *env_exact_orbitals = getenv("SEP_MB_EXACT_ORBITALS"),
-             *env_stratify_single_jump = getenv("SEP_MB_STRATIFY_SINGLE_JUMP_TIME");
+             *env_stratify_single_jump = getenv("SEP_MB_STRATIFY_SINGLE_JUMP_TIME"),
+             *env_sample_back_orbitals = getenv("SEP_MB_SAMPLE_BACK_ORBITALS"),
+             *env_exact_back_jumps = getenv("SEP_MB_EXACT_BACK_JUMPS");
   double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
   int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
   if(env_nwf) nwf = atoi(env_nwf);
   if(nwf < 0) nwf = 0;
   if(nwf > nstep) nwf = nstep;
-  int forced_measure_stride = env_measure_stride ? atoi(env_measure_stride) : 0;
+  int forced_measure_stride = env_measure_stride ? atoi(env_measure_stride) : 1;
   if(forced_measure_stride < 0) forced_measure_stride = 0;
-  int back_replicas = env_back_replicas ? atoi(env_back_replicas) : 4;
+  int back_replicas = env_back_replicas ? atoi(env_back_replicas) : 256;
   if(back_replicas < 1) back_replicas = 1;
-  if(back_replicas > 64) back_replicas = 64;
+  if(back_replicas > 1024) back_replicas = 1024;
   const bool stratify_forward = env_stratify_forward
-      ? atoi(env_stratify_forward) != 0 : false;
+      ? atoi(env_stratify_forward) != 0 : true;
   const bool exact_orbitals = env_exact_orbitals
-      ? atoi(env_exact_orbitals) != 0 : false;
+      ? atoi(env_exact_orbitals) != 0 : true;
   const bool stratify_single_jump = env_stratify_single_jump
-      ? atoi(env_stratify_single_jump) != 0 : false;
+      ? atoi(env_stratify_single_jump) != 0 : true;
+  const bool sample_back_orbitals = env_sample_back_orbitals
+      ? atoi(env_sample_back_orbitals) != 0 : true;
+  int exact_back_jumps = env_exact_back_jumps ? atoi(env_exact_back_jumps) : 1;
+  if(exact_back_jumps < 0) exact_back_jumps = 0;
+  if(exact_back_jumps > 6) exact_back_jumps = 6;
   double gap = 0.0;
   for(int a : S0) {
     for(int b=0; b<Norb; b++) {
@@ -412,13 +419,69 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
     dcomplex **expEoccdt = array2d<dcomplex>(nstep+1, Nhs),
              *vec_for    = array1d<dcomplex>(Nhs),
-             *vec_back   = array1d<dcomplex>(Nhs),
+             *vec_back   = sample_back_orbitals ? NULL : array1d<dcomplex>(Nhs),
              *vec_tmp    = array1d<dcomplex>(Nhs);
     const int vec_bytes = sizeof(dcomplex)*Nhs;
     for(int k=0; k<=nstep; k++) {
       for(int s=0; s<Nhs; s++) {
         expEoccdt[k][s] = exp(-I*(dt*Eocc[s]*(double)k));
       }
+    }
+
+    vector<vector<int> > back_orbital_targets;
+    vector<vector<double> > back_orbital_factors;
+    dcomplex *sparse_back = sample_back_orbitals && exact_back_jumps > 0
+        ? array1d<dcomplex>(Nhs) : NULL,
+             *sparse_next = sample_back_orbitals && exact_back_jumps > 0
+        ? array1d<dcomplex>(Nhs) : NULL;
+    vector<unsigned long long> sparse_marks(Nhs, 0);
+    vector<int> sparse_active, sparse_next_active;
+    sparse_active.reserve(Nhs);
+    sparse_next_active.reserve(Nhs);
+    unsigned long long sparse_generation = 0;
+    if(sample_back_orbitals) {
+      back_orbital_targets.resize(Nhs);
+      back_orbital_factors.resize(Nhs);
+      int *sample_state = array1d<int>(Nel);
+      for(int s=0; s<Nhs; s++) {
+        if(occ[s][0] == 0) {
+          for(int k=0; k<Nvac; k++) {
+            memcpy(sample_state, occ[s], Nel*sizeofint);
+            const int orbital = virt[s][k];
+            sample_state[0] = orbital;
+            qsort(sample_state, Nel, sizeofint, intcmp);
+            int position = 0;
+            while(position < Nel && sample_state[position] != orbital) position++;
+            int found = 0;
+            const int target = binary_search3(sample_state, *occ, Nhs,
+                Nel*sizeofint, &found, _mycmp3);
+            if(!found || position >= Nel) {
+              cerr<<"failed to build sampled backward 0->bath transition.\n";
+              abort();
+            }
+            back_orbital_targets[s].push_back(target);
+            back_orbital_factors[s].push_back(
+                eo[position&1]*sqrtNvac*sqrt1_Nel);
+          }
+        } else {
+          for(int k=0; k<Nel; k++) {
+            memcpy(sample_state, occ[s], Nel*sizeofint);
+            sample_state[k] = 0;
+            qsort(sample_state, Nel, sizeofint, intcmp);
+            int found = 0;
+            const int target = binary_search3(sample_state, *occ, Nhs,
+                Nel*sizeofint, &found, _mycmp3);
+            if(!found) {
+              cerr<<"failed to build sampled backward bath->0 transition.\n";
+              abort();
+            }
+            back_orbital_targets[s].push_back(target);
+            back_orbital_factors[s].push_back(
+                eo[k&1]*sqrtNel*sqrt1_Nvac);
+          }
+        }
+      }
+      free1d(sample_state);
     }
 
     for(int n=0; n<ntraj_local; n++) {
@@ -484,18 +547,29 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           const int nj_back = sepmb_sample_conditioned_count(
               back_accept[j][parity], j, parity, first_count, count_u);
           if(nj_back < 0) continue;
+          const bool sparse_exact_back = sample_back_orbitals && exact_back_jumps > 0 &&
+              nj_back <= exact_back_jumps;
           bzero(jumps_back, Jmax*sizeof(int));
           if(sepmb_sample_jump_times_stratified(j, nj_back,
                 ((unsigned long long)(trajectory_offset+n)/nstep)*back_replicas+iback,
                 backward_time_shift, stratify_single_jump,
                 jumps_back) != nj_back) continue;
 
-          bzero(vec_back, vec_bytes);
-          vec_back[initial_basis] = 1.0;
+          sparse_active.clear();
+          sparse_next_active.clear();
+          if(sparse_exact_back) {
+            sparse_back[initial_basis] = 1.0;
+            sparse_active.push_back(initial_basis);
+          } else if(!sample_back_orbitals) {
+            bzero(vec_back, vec_bytes);
+            vec_back[initial_basis] = 1.0;
+          }
           dcomplex alp_back = alp_init,
-                   wgt_back = wgt_init;
+                   wgt_back = wgt_init,
+                   orbital_back_weight = 1.0;
           int excited_back = excited0,
-              offset = 0;
+              offset = 0,
+              back_basis = initial_basis;
 
           for(int k=0; k<nj_back; k++) {
             const int nadvance = jumps_back[k]-1-offset;
@@ -508,14 +582,50 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               wgt_back *= exphwdt[nadvance];
               alp_back *= expfreqdt[nadvance];
             }
-            for(int s=0; s<Nhs; s++) {
-              vec_back[s] *= expEoccdt[nadvance][s];
-            }
-
-            bzero(vec_tmp, vec_bytes);
-            exc.multiply(vec_back, vec_tmp);
-            for(int s=0; s<Nhs; s++) {
-              vec_back[s] = vec_tmp[s]*inv_jump_normalization;
+            if(sparse_exact_back) {
+              for(int s : sparse_active) {
+                sparse_back[s] *= expEoccdt[nadvance][s];
+              }
+              sparse_next_active.clear();
+              sparse_generation++;
+              for(int s : sparse_active) {
+                const int degree = back_orbital_targets[s].size();
+                for(int choice=0; choice<degree; choice++) {
+                  const int target = back_orbital_targets[s][choice];
+                  if(sparse_marks[target] != sparse_generation) {
+                    sparse_marks[target] = sparse_generation;
+                    sparse_next[target] = 0.0;
+                    sparse_next_active.push_back(target);
+                  }
+                  sparse_next[target] += sparse_back[s]
+                      *back_orbital_factors[s][choice]/(double)degree;
+                }
+              }
+              for(int s : sparse_active) sparse_back[s] = 0.0;
+              dcomplex *swap_buffer = sparse_back;
+              sparse_back = sparse_next;
+              sparse_next = swap_buffer;
+              sparse_active.swap(sparse_next_active);
+            } else if(sample_back_orbitals) {
+              orbital_back_weight *= expEoccdt[nadvance][back_basis];
+              const int degree = back_orbital_targets[back_basis].size();
+              if(degree <= 0) {
+                cerr<<"sampled backward determinant has no jump target.\n";
+                abort();
+              }
+              int choice = (int)(drand48()*degree);
+              if(choice >= degree) choice = degree-1;
+              orbital_back_weight *= back_orbital_factors[back_basis][choice];
+              back_basis = back_orbital_targets[back_basis][choice];
+            } else {
+              for(int s=0; s<Nhs; s++) {
+                vec_back[s] *= expEoccdt[nadvance][s];
+              }
+              bzero(vec_tmp, vec_bytes);
+              exc.multiply(vec_back, vec_tmp);
+              for(int s=0; s<Nhs; s++) {
+                vec_back[s] = vec_tmp[s]*inv_jump_normalization;
+              }
             }
             offset = jumps_back[k]-1;
             excited_back = 1-excited_back;
@@ -531,8 +641,16 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             wgt_back *= exphwdt[nadvance];
             alp_back *= expfreqdt[nadvance];
           }
-          for(int s=0; s<Nhs; s++) {
-            vec_back[s] *= expEoccdt[nadvance][s];
+          if(sparse_exact_back) {
+            for(int s : sparse_active) {
+              sparse_back[s] *= expEoccdt[nadvance][s];
+            }
+          } else if(sample_back_orbitals) {
+            orbital_back_weight *= expEoccdt[nadvance][back_basis];
+          } else {
+            for(int s=0; s<Nhs; s++) {
+              vec_back[s] *= expEoccdt[nadvance][s];
+            }
           }
 
           if(excited_back != excited_for) {
@@ -543,11 +661,29 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                                      *inv_ntraj*inv_back_replicas,
                          bra_scale = wgt_back*Iton[nj_back%4]
                                      *back_accept_prb*sclf[j];
-          for(int s=0; s<Nhs; s++) {
-            if(abs(vec_for[s]) <= 1.e-300 || abs(vec_back[s]) <= 1.e-300) continue;
-            csproj(ket_scale*vec_for[s], alp_for,
-                   bra_scale*vec_back[s], alp_back,
-                   excited_for, basis_states[s], prb[iprb]);
+          if(sparse_exact_back) {
+            for(int s : sparse_active) {
+              if(abs(vec_for[s]) <= 1.e-300 ||
+                 abs(sparse_back[s]) <= 1.e-300) continue;
+              csproj(ket_scale*vec_for[s], alp_for,
+                     bra_scale*sparse_back[s], alp_back,
+                     excited_for, basis_states[s], prb[iprb]);
+            }
+            for(int s : sparse_active) sparse_back[s] = 0.0;
+          } else if(sample_back_orbitals) {
+            if(abs(vec_for[back_basis]) > 1.e-300 &&
+               abs(orbital_back_weight) > 1.e-300) {
+              csproj(ket_scale*vec_for[back_basis], alp_for,
+                     bra_scale*orbital_back_weight, alp_back,
+                     excited_for, basis_states[back_basis], prb[iprb]);
+            }
+          } else {
+            for(int s=0; s<Nhs; s++) {
+              if(abs(vec_for[s]) <= 1.e-300 || abs(vec_back[s]) <= 1.e-300) continue;
+              csproj(ket_scale*vec_for[s], alp_for,
+                     bra_scale*vec_back[s], alp_back,
+                     excited_for, basis_states[s], prb[iprb]);
+            }
           }
         }
       }
@@ -555,7 +691,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
     free2d(expEoccdt);
     free1d(vec_for);
-    free1d(vec_back);
+    if(vec_back) free1d(vec_back);
+    if(sparse_back) free1d(sparse_back);
+    if(sparse_next) free1d(sparse_next);
     free1d(vec_tmp);
   } else {
   KondoPathSampler sampler(Norb, Nel, Jmax);
@@ -900,16 +1038,21 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
     fprintf(FL, exact_orbitals
-        ? (stratify_single_jump
-            ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
-            : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n")
+        ? (sample_back_orbitals
+            ? (exact_back_jumps > 0
+              ? "#PATCH_CHECK: SepMBpoisson v0.71 direct-grid sampled-backward active\n"
+              : "#PATCH_CHECK: SepMBpoisson v0.66 sampled-backward-orbital active\n")
+            : (stratify_single_jump
+              ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
+              : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
         : "#PATCH_CHECK: SepMBpoisson v0.61 exact-bernoulli stratified-backward active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
-    fprintf(FL, "#sampling: jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d exact_orbitals=%d stratify_single_jump_time=%d\n",
+    fprintf(FL, "#sampling: jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
             jump_strength, jump_probability, log_scale, back_replicas,
             stratify_forward ? 1 : 0, exact_orbitals ? 1 : 0,
-            stratify_single_jump ? 1 : 0);
+            stratify_single_jump ? 1 : 0, sample_back_orbitals ? 1 : 0,
+            exact_back_jumps);
     fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e forced_stride=%d\n",
             gap, period_steps, nmeas, nwf, nwf*dt, forced_measure_stride);
     double *rlt = array1d<double>(Norb+3);
