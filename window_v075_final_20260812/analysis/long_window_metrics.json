@@ -1,0 +1,82 @@
+{
+  "qm": "E:\\project_qm\\window_v073_t100_20260812\\qm\\ahm-qm-s10-n5.dat",
+  "simulation": "E:\\project_qm\\window_v075_final_20260812\\window4\\ahm-sepmb-s10-n5-100000.dat",
+  "tmax": 100.0,
+  "dt": 0.5,
+  "n_points": 201,
+  "active_orbitals": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "minimum_Q_active": 0.20391769394715134,
+  "windows": [
+    {
+      "window_start": 0.0,
+      "window_stop": 25.0,
+      "n_points": 51,
+      "Q_active": 9.493276108375582,
+      "min_active_orbital_Q": 0.24895403388048604,
+      "signal_rms_active": 1.7186838160053174e-05,
+      "error_rms_active": 1.8104222361013848e-06,
+      "amplitude_ratio_active": 0.9856468089500616,
+      "cosine_active": 0.994475698740131,
+      "max_particle_error": 3.1734614935885475e-12,
+      "target_Q": 10.0,
+      "trajectory_multiplier_for_target": 1.1096033910252943,
+      "projected_ntraj_for_target": 110960.33910252943
+    },
+    {
+      "window_start": 25.0,
+      "window_stop": 50.0,
+      "n_points": 51,
+      "Q_active": 0.7744296445303228,
+      "min_active_orbital_Q": 0.05043629611048285,
+      "signal_rms_active": 1.5190799152732794e-05,
+      "error_rms_active": 1.961546702146937e-05,
+      "amplitude_ratio_active": 1.828376691890359,
+      "cosine_active": 0.7316806433237366,
+      "max_particle_error": 3.1086244689504383e-13,
+      "target_Q": 10.0,
+      "trajectory_multiplier_for_target": 166.7385659127007,
+      "projected_ntraj_for_target": 16673856.591270069
+    },
+    {
+      "window_start": 50.0,
+      "window_stop": 75.0,
+      "n_points": 51,
+      "Q_active": 0.3168211133372578,
+      "min_active_orbital_Q": 0.01112608395036954,
+      "signal_rms_active": 1.4770940558600252e-05,
+      "error_rms_active": 4.6622336507215364e-05,
+      "amplitude_ratio_active": 3.385140833961811,
+      "cosine_active": 0.3687586149343819,
+      "max_particle_error": 3.8902214782865485e-13,
+      "target_Q": 10.0,
+      "trajectory_multiplier_for_target": 996.2578775176511,
+      "projected_ntraj_for_target": 99625787.7517651
+    },
+    {
+      "window_start": 75.0,
+      "window_stop": 100.0,
+      "n_points": 51,
+      "Q_active": 0.20391769394715134,
+      "min_active_orbital_Q": 0.002120811385267236,
+      "signal_rms_active": 1.4778969482772192e-05,
+      "error_rms_active": 7.247516974472263e-05,
+      "amplitude_ratio_active": 5.2641602230764315,
+      "cosine_active": 0.4428780353284096,
+      "max_particle_error": 3.0730973321624333e-13,
+      "target_Q": 10.0,
+      "trajectory_multiplier_for_target": 2404.8620979720004,
+      "projected_ntraj_for_target": 240486209.79720002
+    }
+  ]
+}

@@ -9,7 +9,9 @@
 #include "./qmfft.h"
 #include "./qho.h"
 #include "./Kondo-path-sampler.h"
+#include <cmath>
 #include <cstdlib>
+#include <map>
 
 #define _YYY_REALSPACE_AV_
 
@@ -66,16 +68,135 @@ int sepmb_sample_jump_times(const int nstep, const int njump, int *jumps) {
 
 int sepmb_sample_jump_times_stratified(const int nstep, const int njump,
     const unsigned long long sample_index, const unsigned long long shift,
-    const bool stratify_single_jump, int *jumps) {
+    const bool stratify_single_jump, const bool stratify_multi_jump,
+    int *jumps) {
   if(stratify_single_jump && njump == 1 && nstep > 0) {
     jumps[0] = 1 + (int)((sample_index+shift)%(unsigned long long)nstep);
     return 1;
+  }
+  if(stratify_multi_jump && njump > 1 && njump <= nstep) {
+    // A random shift makes every sample unbiased.  The irrational rotation
+    // spreads successive samples over the uniformly weighted combination
+    // intervals, while this inverse map preserves the exact law for choosing
+    // njump distinct grid points from nstep.
+    const double inv_2_53 = 1.0/9007199254740992.0,
+                 shift_u = (double)(shift>>11)*inv_2_53,
+                 golden = 0.6180339887498948482;
+    double u = fmod(shift_u + (sample_index+0.5)*golden, 1.0);
+    int selected = 0, remaining = njump;
+    for(int j=1; j<=nstep && remaining>0; j++) {
+      const int slots = nstep-j+1;
+      if(remaining == slots) {
+        while(j<=nstep) jumps[selected++] = j++;
+        remaining = 0;
+        break;
+      }
+      const double include_probability = remaining/(double)slots;
+      if(u < include_probability) {
+        jumps[selected++] = j;
+        remaining--;
+        u /= include_probability;
+      } else {
+        u = (u-include_probability)/(1.0-include_probability);
+      }
+      if(u < 0.0) u = 0.0;
+      if(u >= 1.0) u = nextafter(1.0, 0.0);
+    }
+    return remaining == 0 ? selected : -1;
   }
   return sepmb_sample_jump_times(nstep, njump, jumps);
 }
 
 unsigned long long sepmb_random_shift() {
   return ((unsigned long long)lrand48()<<32) ^ (unsigned long long)lrand48();
+}
+
+bool sepmb_resample_window_ensemble(const int nparticle, const int ndim,
+    vector<dcomplex> &electronic, vector<dcomplex> &alpha,
+    vector<dcomplex> &weight, vector<int> &excited,
+    const double alpha_bin_width) {
+  if(nparticle <= 0 || ndim <= 0) return false;
+
+  vector<dcomplex> grouped_electronic;
+  vector<dcomplex> grouped_alpha_sum;
+  vector<double> grouped_alpha_weight;
+  vector<int> grouped_excited;
+  map<pair<int, pair<long long, long long> >, int> group_lookup;
+  for(int n=0; n<nparticle; n++) {
+    double norm2 = 0.0;
+    const dcomplex *vec = &electronic[(size_t)n*ndim];
+    for(int s=0; s<ndim; s++) norm2 += std::norm(vec[s]);
+    const double particle_importance = abs(weight[n])*sqrt(norm2);
+    if(!(particle_importance > 1.e-300)) continue;
+
+    int group = -1;
+    if(alpha_bin_width > 0.0) {
+      const long long real_bin = (long long)floor(real(alpha[n])/alpha_bin_width),
+                      imag_bin = (long long)floor(imag(alpha[n])/alpha_bin_width);
+      const pair<int, pair<long long, long long> > key(
+          excited[n], make_pair(real_bin, imag_bin));
+      map<pair<int, pair<long long, long long> >, int>::iterator found =
+          group_lookup.find(key);
+      if(found == group_lookup.end()) {
+        group = grouped_excited.size();
+        group_lookup[key] = group;
+      } else {
+        group = found->second;
+      }
+    } else {
+      group = grouped_excited.size();
+    }
+
+    if(group == (int)grouped_excited.size()) {
+      grouped_excited.push_back(excited[n]);
+      grouped_alpha_sum.push_back(0.0);
+      grouped_alpha_weight.push_back(0.0);
+      grouped_electronic.resize((size_t)(group+1)*ndim, 0.0);
+    }
+    dcomplex *group_vec = &grouped_electronic[(size_t)group*ndim];
+    for(int s=0; s<ndim; s++) group_vec[s] += weight[n]*vec[s];
+    grouped_alpha_sum[group] += particle_importance*alpha[n];
+    grouped_alpha_weight[group] += particle_importance;
+  }
+
+  const int ngroup = grouped_excited.size();
+  if(ngroup <= 0) return false;
+  vector<double> group_norm(ngroup, 0.0), cumulative(ngroup, 0.0);
+  double total = 0.0;
+  for(int group=0; group<ngroup; group++) {
+    double norm2 = 0.0;
+    const dcomplex *vec = &grouped_electronic[(size_t)group*ndim];
+    for(int s=0; s<ndim; s++) norm2 += std::norm(vec[s]);
+    group_norm[group] = sqrt(norm2);
+    total += group_norm[group];
+    cumulative[group] = total;
+  }
+  if(!(total > 1.e-300) || !std::isfinite(total)) return false;
+
+  vector<dcomplex> electronic_new((size_t)nparticle*ndim),
+                   alpha_new(nparticle), weight_new(nparticle);
+  vector<int> excited_new(nparticle);
+  const double common_magnitude = total/nparticle,
+               u0 = drand48()/nparticle;
+  int source = 0;
+  for(int n=0; n<nparticle; n++) {
+    const double target = (u0+n/(double)nparticle)*total;
+    while(source+1<ngroup && cumulative[source] < target) source++;
+    if(group_norm[source] <= 1.e-300 ||
+       grouped_alpha_weight[source] <= 1.e-300) return false;
+    weight_new[n] = common_magnitude;
+    alpha_new[n] = grouped_alpha_sum[source]/grouped_alpha_weight[source];
+    excited_new[n] = grouped_excited[source];
+    const dcomplex *src = &grouped_electronic[(size_t)source*ndim];
+    dcomplex *dst = &electronic_new[(size_t)n*ndim];
+    for(int s=0; s<ndim; s++) dst[s] = src[s]/group_norm[source];
+  }
+
+  electronic.swap(electronic_new);
+  alpha.swap(alpha_new);
+  weight.swap(weight_new);
+  excited.swap(excited_new);
+  return true;
 }
 
 vector<double> sepmb_binomial_cdf(const int nstep, const double probability) {
@@ -271,8 +392,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_stratify_forward = getenv("SEP_MB_STRATIFY_FORWARD_COUNT"),
              *env_exact_orbitals = getenv("SEP_MB_EXACT_ORBITALS"),
              *env_stratify_single_jump = getenv("SEP_MB_STRATIFY_SINGLE_JUMP_TIME"),
+             *env_stratify_multi_jump = getenv("SEP_MB_STRATIFY_MULTI_JUMP_TIME"),
              *env_sample_back_orbitals = getenv("SEP_MB_SAMPLE_BACK_ORBITALS"),
-             *env_exact_back_jumps = getenv("SEP_MB_EXACT_BACK_JUMPS");
+             *env_exact_back_jumps = getenv("SEP_MB_EXACT_BACK_JUMPS"),
+             *env_window_steps = getenv("SEP_MB_WINDOW_STEPS"),
+             *env_window_pair_replicas = getenv("SEP_MB_WINDOW_PAIR_REPLICAS"),
+             *env_window_alpha_bin = getenv("SEP_MB_WINDOW_ALPHA_BIN");
   double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
   int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
   if(env_nwf) nwf = atoi(env_nwf);
@@ -289,11 +414,23 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       ? atoi(env_exact_orbitals) != 0 : true;
   const bool stratify_single_jump = env_stratify_single_jump
       ? atoi(env_stratify_single_jump) != 0 : true;
+  const bool stratify_multi_jump = env_stratify_multi_jump
+      ? atoi(env_stratify_multi_jump) != 0 : false;
   const bool sample_back_orbitals = env_sample_back_orbitals
       ? atoi(env_sample_back_orbitals) != 0 : true;
   int exact_back_jumps = env_exact_back_jumps ? atoi(env_exact_back_jumps) : 1;
   if(exact_back_jumps < 0) exact_back_jumps = 0;
   if(exact_back_jumps > 6) exact_back_jumps = 6;
+  int window_steps = env_window_steps ? atoi(env_window_steps) : 0;
+  if(window_steps < 0) window_steps = 0;
+  if(window_steps > nwf) window_steps = nwf;
+  int window_pair_replicas = env_window_pair_replicas
+      ? atoi(env_window_pair_replicas) : 1;
+  if(window_pair_replicas < 1) window_pair_replicas = 1;
+  if(window_pair_replicas > 64) window_pair_replicas = 64;
+  double window_alpha_bin = env_window_alpha_bin
+      ? atof(env_window_alpha_bin) : 0.0;
+  if(window_alpha_bin < 0.0) window_alpha_bin = 0.0;
   double gap = 0.0;
   for(int a : S0) {
     for(int b=0; b<Norb; b++) {
@@ -367,7 +504,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   }
   unsigned long long forward_time_shift = 0,
                      backward_time_shift = 0;
-  if(stratify_single_jump) {
+  if(stratify_single_jump || stratify_multi_jump) {
 #ifdef _YYY_MPI_
     if(myid==master) {
       forward_time_shift = sepmb_random_shift();
@@ -428,6 +565,193 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       }
     }
 
+    if(window_steps > 0) {
+      if(ntraj_local <= 0) {
+        cerr<<"windowed SepMB requires at least one trajectory per MPI rank.\n";
+        abort();
+      }
+
+      const size_t ensemble_size = (size_t)ntraj_local*Nhs;
+      vector<dcomplex> ket_electronic(ensemble_size, 0.0),
+                       bra_electronic(ensemble_size, 0.0),
+                       ket_alpha(ntraj_local, alp_init),
+                       bra_alpha(ntraj_local, alp_init),
+                       ket_weight(ntraj_local, wgt_init),
+                       bra_weight(ntraj_local, wgt_init);
+      vector<int> ket_excited(ntraj_local, excited0),
+                  bra_excited(ntraj_local, excited0),
+                  ket_njump(ntraj_local, 0),
+                  bra_njump(ntraj_local, 0);
+      vector<unsigned char> ket_schedule((size_t)ntraj_local*(window_steps+1), 0),
+                            bra_schedule((size_t)ntraj_local*(window_steps+1), 0);
+      for(int n=0; n<ntraj_local; n++) {
+        ket_electronic[(size_t)n*Nhs+initial_basis] = 1.0;
+        bra_electronic[(size_t)n*Nhs+initial_basis] = 1.0;
+      }
+
+      const auto prepare_window_schedule = [&](vector<unsigned char> &schedule,
+          const int block_steps, const int block_index,
+          const double count_shift, const unsigned long long time_shift,
+          int *jump_buffer) {
+        fill(schedule.begin(), schedule.end(), 0);
+        const vector<double> count_cdf = sepmb_binomial_cdf(
+            block_steps, jump_probability);
+        for(int n=0; n<ntraj_local; n++) {
+          const unsigned long long global_index =
+              (unsigned long long)block_index*ntraj + trajectory_offset+n;
+          const double count_u = fmod(count_shift +
+              (global_index+0.5)*0.6180339887498948482, 1.0);
+          const int count = sepmb_sample_cdf(count_cdf, count_u);
+          if(sepmb_sample_jump_times_stratified(block_steps, count,
+                global_index, time_shift, stratify_single_jump,
+                stratify_multi_jump, jump_buffer) != count) {
+            cerr<<"failed to sample a windowed SepMB jump schedule.\n";
+            abort();
+          }
+          for(int k=0; k<count; k++) {
+            schedule[(size_t)n*(window_steps+1)+jump_buffer[k]] = 1;
+          }
+        }
+      };
+
+      const auto advance_window_ensemble = [&](vector<dcomplex> &electronic,
+          vector<dcomplex> &alpha, vector<dcomplex> &weight,
+          vector<int> &excited, vector<int> &njump,
+          const vector<unsigned char> &schedule, const int local_step) {
+        for(int n=0; n<ntraj_local; n++) {
+          dcomplex *vec = &electronic[(size_t)n*Nhs];
+          if(schedule[(size_t)n*(window_steps+1)+local_step]) {
+            bzero(vec_tmp, vec_bytes);
+            exc.multiply(vec, vec_tmp);
+            for(int s=0; s<Nhs; s++) {
+              vec[s] = vec_tmp[s]*inv_jump_normalization;
+            }
+            njump[n]++;
+            excited[n] = 1-excited[n];
+          }
+
+          if(excited[n]) {
+            const double p_before = fpt*imag(alpha[n]);
+            alpha[n] = (alpha[n]-dalp)*expfreqdt1 + dalp;
+            const double p_after = fpt*imag(alpha[n]);
+            weight[n] *= exphwdt1
+                *exp(0.5*I*(p_before-p_after)*delx);
+          } else {
+            weight[n] *= exphwdt1;
+            alpha[n] *= expfreqdt1;
+          }
+          for(int s=0; s<Nhs; s++) vec[s] *= expEoccdt[1][s];
+        }
+      };
+
+      int block_index = 0;
+      for(int block_start=0; block_start<nwf;
+          block_start += window_steps, block_index++) {
+        const int block_steps = min(window_steps, nwf-block_start);
+        double ket_count_shift = 0.0, bra_count_shift = 0.0;
+        unsigned long long ket_time_shift = 0, bra_time_shift = 0;
+#ifdef _YYY_MPI_
+        if(myid==master) {
+          ket_count_shift = drand48();
+          bra_count_shift = drand48();
+          ket_time_shift = sepmb_random_shift();
+          bra_time_shift = sepmb_random_shift();
+        }
+        MPI_Bcast(&ket_count_shift, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(&bra_count_shift, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(&ket_time_shift, 1, MPI_UNSIGNED_LONG_LONG, master, MPI_COMM_WORLD);
+        MPI_Bcast(&bra_time_shift, 1, MPI_UNSIGNED_LONG_LONG, master, MPI_COMM_WORLD);
+#else
+        ket_count_shift = drand48();
+        bra_count_shift = drand48();
+        ket_time_shift = sepmb_random_shift();
+        bra_time_shift = sepmb_random_shift();
+#endif
+        prepare_window_schedule(ket_schedule, block_steps, block_index,
+            ket_count_shift, ket_time_shift, jumps_forward);
+        prepare_window_schedule(bra_schedule, block_steps, block_index,
+            bra_count_shift, bra_time_shift, jumps_back);
+        fill(ket_njump.begin(), ket_njump.end(), 0);
+        fill(bra_njump.begin(), bra_njump.end(), 0);
+
+        for(int local_step=1; local_step<=block_steps; local_step++) {
+          advance_window_ensemble(ket_electronic, ket_alpha, ket_weight,
+              ket_excited, ket_njump, ket_schedule, local_step);
+          advance_window_ensemble(bra_electronic, bra_alpha, bra_weight,
+              bra_excited, bra_njump, bra_schedule, local_step);
+
+          const int global_step = block_start+local_step,
+                    iprb = measure_slot[global_step];
+          for(int n=0; n<ntraj_local; n++) {
+            if(ket_njump[n] <= nstep) jc[ket_njump[n]]++;
+          }
+          if(iprb < 0) continue;
+
+          vector<int> bra_class[2];
+          bra_class[0].reserve(ntraj_local);
+          bra_class[1].reserve(ntraj_local);
+          for(int m=0; m<ntraj_local; m++) {
+            bra_class[bra_excited[m]&1].push_back(m);
+          }
+          int pair_offset[2] = {0, 0};
+          for(int c=0; c<2; c++) {
+            if(!bra_class[c].empty()) {
+              pair_offset[c] = (int)(drand48()*bra_class[c].size());
+              if(pair_offset[c] >= (int)bra_class[c].size()) {
+                pair_offset[c] = bra_class[c].size()-1;
+              }
+            }
+          }
+          for(int n=0; n<ntraj_local; n++) {
+            const int c = ket_excited[n]&1,
+                      class_size = bra_class[c].size();
+            if(class_size <= 0) continue;
+            const double class_fraction = class_size/(double)ntraj_local,
+                         inv_pair_replicas = 1.0/window_pair_replicas;
+            const dcomplex ket_scale = ket_weight[n]
+                *Iton[ket_njump[n]%4]*sclf[local_step]*inv_ntraj
+                *class_fraction*inv_pair_replicas;
+            const dcomplex *ket_vec = &ket_electronic[(size_t)n*Nhs];
+            const int pair_stride = max(1, class_size/window_pair_replicas);
+            for(int replica=0; replica<window_pair_replicas; replica++) {
+              const int pair_position = (pair_offset[c]+n+
+                      replica*pair_stride)%class_size,
+                        m = bra_class[c][pair_position];
+              const dcomplex bra_scale = bra_weight[m]
+                  *Iton[bra_njump[m]%4]*sclf[local_step];
+              const dcomplex *bra_vec = &bra_electronic[(size_t)m*Nhs];
+              for(int s=0; s<Nhs; s++) {
+                if(abs(ket_vec[s]) <= 1.e-300 ||
+                   abs(bra_vec[s]) <= 1.e-300) continue;
+                csproj(ket_scale*ket_vec[s], ket_alpha[n],
+                       bra_scale*bra_vec[s], bra_alpha[m],
+                       ket_excited[n], basis_states[s], prb[iprb]);
+              }
+            }
+          }
+        }
+
+        for(int n=0; n<ntraj_local; n++) {
+          ket_weight[n] *= Iton[ket_njump[n]%4]*sclf[block_steps];
+          bra_weight[n] *= Iton[bra_njump[n]%4]*sclf[block_steps];
+        }
+        if(block_start+block_steps < nwf) {
+          if(!sepmb_resample_window_ensemble(ntraj_local, Nhs,
+                ket_electronic, ket_alpha, ket_weight, ket_excited,
+                window_alpha_bin) ||
+             !sepmb_resample_window_ensemble(ntraj_local, Nhs,
+                bra_electronic, bra_alpha, bra_weight, bra_excited,
+                window_alpha_bin)) {
+            cerr<<"windowed SepMB resampling failed.\n";
+            abort();
+          }
+        }
+      }
+      free2d(expEoccdt);
+      free1d(vec_for);
+      if(vec_back) free1d(vec_back);
+      free1d(vec_tmp);
+    } else {
     vector<vector<int> > back_orbital_targets;
     vector<vector<double> > back_orbital_factors;
     dcomplex *sparse_back = sample_back_orbitals && exact_back_jumps > 0
@@ -499,7 +823,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         const int nj_forward = sepmb_sample_cdf(forward_count_cdf, count_u);
         if(sepmb_sample_jump_times_stratified(nstep, nj_forward,
               (unsigned long long)(trajectory_offset+n), forward_time_shift,
-              stratify_single_jump, jumps_forward) != nj_forward) {
+              stratify_single_jump, stratify_multi_jump,
+              jumps_forward) != nj_forward) {
           cerr<<"failed to sample exact-orbital forward jump times.\n";
           abort();
         }
@@ -553,6 +878,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           if(sepmb_sample_jump_times_stratified(j, nj_back,
                 ((unsigned long long)(trajectory_offset+n)/nstep)*back_replicas+iback,
                 backward_time_shift, stratify_single_jump,
+                stratify_multi_jump,
                 jumps_back) != nj_back) continue;
 
           sparse_active.clear();
@@ -695,6 +1021,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     if(sparse_back) free1d(sparse_back);
     if(sparse_next) free1d(sparse_next);
     free1d(vec_tmp);
+    }
   } else {
   KondoPathSampler sampler(Norb, Nel, Jmax);
   Path_Sampler PS[2][2] = {
@@ -727,7 +1054,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       const int nj_forward = sepmb_sample_cdf(forward_count_cdf, count_u);
       if(sepmb_sample_jump_times_stratified(nstep, nj_forward,
             (unsigned long long)(trajectory_offset+n), forward_time_shift,
-            stratify_single_jump, jumps_forward) != nj_forward) {
+            stratify_single_jump, stratify_multi_jump,
+            jumps_forward) != nj_forward) {
         cerr<<"failed to sample stratified forward jump times.\n";
         abort();
       }
@@ -887,6 +1215,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           if(sepmb_sample_jump_times_stratified(j, nj_back,
                 ((unsigned long long)(trajectory_offset+n)/nstep)*back_replicas+iback,
                 backward_time_shift, stratify_single_jump,
+                stratify_multi_jump,
                 jumps_back) != nj_back) continue;
 
           int status = 0, fails = 0;
@@ -1037,24 +1366,31 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     char fnm[256];
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
-    fprintf(FL, exact_orbitals
-        ? (sample_back_orbitals
-            ? (exact_back_jumps > 0
-              ? "#PATCH_CHECK: SepMBpoisson v0.71 direct-grid sampled-backward active\n"
-              : "#PATCH_CHECK: SepMBpoisson v0.66 sampled-backward-orbital active\n")
-            : (stratify_single_jump
-              ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
-              : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
-        : "#PATCH_CHECK: SepMBpoisson v0.61 exact-bernoulli stratified-backward active\n");
+    if(exact_orbitals && window_steps > 0) {
+      fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.75 MPI-balanced phase-annihilated window propagation experimental\n");
+    } else {
+      fprintf(FL, exact_orbitals
+          ? (sample_back_orbitals
+              ? (exact_back_jumps > 0
+                ? "#PATCH_CHECK: SepMBpoisson v0.71 direct-grid sampled-backward active\n"
+                : "#PATCH_CHECK: SepMBpoisson v0.66 sampled-backward-orbital active\n")
+              : (stratify_single_jump
+                ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
+                : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
+          : "#PATCH_CHECK: SepMBpoisson v0.61 exact-bernoulli stratified-backward active\n");
+    }
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
-    fprintf(FL, "#sampling: jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
+    fprintf(FL, "#sampling: jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d exact_orbitals=%d stratify_single_jump_time=%d stratify_multi_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
             jump_strength, jump_probability, log_scale, back_replicas,
             stratify_forward ? 1 : 0, exact_orbitals ? 1 : 0,
-            stratify_single_jump ? 1 : 0, sample_back_orbitals ? 1 : 0,
+            stratify_single_jump ? 1 : 0, stratify_multi_jump ? 1 : 0,
+            sample_back_orbitals ? 1 : 0,
             exact_back_jumps);
-    fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e forced_stride=%d\n",
-            gap, period_steps, nmeas, nwf, nwf*dt, forced_measure_stride);
+    fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e forced_stride=%d window_steps=%d window_count=%d window_pair_replicas=%d window_alpha_bin=%1.16e\n",
+            gap, period_steps, nmeas, nwf, nwf*dt, forced_measure_stride,
+            window_steps, window_steps > 0 ? (nwf+window_steps-1)/window_steps : 0,
+            window_pair_replicas, window_alpha_bin);
     double *rlt = array1d<double>(Norb+3);
     int il = 0;
     for(int t=0; t<=nwf; t++)  {
