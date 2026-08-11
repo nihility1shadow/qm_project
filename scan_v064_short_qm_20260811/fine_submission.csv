@@ -1,0 +1,12 @@
+case_id,kind,repeat,poisson_job_id,qm_job_id
+f01_wc_mid,fine,1,644927,644928
+f02_wc_high,fine,1,644929,644930
+f03_eta_low,fine,1,644931,644932
+f04_eta_high,fine,1,644933,644934
+f05_random,fine,1,644935,644936
+f06_random,fine,1,644937,644938
+f07_random,fine,1,644939,644940
+p03_wc_high,validation,2,644941,
+p03_wc_high,validation,3,644942,
+p07_random,validation,2,644943,
+p07_random,validation,3,644944,

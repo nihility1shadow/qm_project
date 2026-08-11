@@ -1,0 +1,35 @@
+{
+  "version": "v0.64",
+  "fixed_physics": {
+    "Norb": 10,
+    "Nel": 5,
+    "delE_eV": -17.194874968839816,
+    "wc_limit_eV": 10.0,
+    "dt_au": 0.5
+  },
+  "best_t50_parameters": {
+    "wc_eV": 3.367556,
+    "eta": 3.2920651000724556e-5,
+    "ntraj": 250000,
+    "back_replicas": 16,
+    "mpi_tasks": 32,
+    "tmax_au": 50.0
+  },
+  "independent_repeats": [
+    {"Q_0_50": 17.56899180378963, "Q_0_25": 35.51059569293713, "Q_25_50": 12.647988722256516, "amplitude_ratio": 1.013253913043735, "cosine_similarity": 0.998488017112237, "runtime_seconds": 50},
+    {"Q_0_50": 19.641329857735567, "Q_0_25": 37.03126177328826, "Q_25_50": 14.27259970464459, "amplitude_ratio": 1.0066825706499598, "cosine_similarity": 0.9987347144289389, "runtime_seconds": 50},
+    {"Q_0_50": 15.476115562679821, "Q_0_25": 31.68736227749037, "Q_25_50": 11.119911120183476, "amplitude_ratio": 0.9808740921303759, "cosine_similarity": 0.9980581666759444, "runtime_seconds": 46}
+  ],
+  "three_repeat_mean": {
+    "Q_0_50": 30.138042843517397,
+    "Q_0_25": 63.055352560878625,
+    "Q_25_50": 21.61123762788532,
+    "amplitude_ratio": 0.9992502362969802,
+    "cosine_similarity": 0.9994493903146986,
+    "max_particle_error": 7.51700923729004e-11
+  },
+  "server_hashes": {
+    "ahm-mb-sep-v064.cpp": "ae3b42e26c19454a118ff12a562ee07d6c8c25ec1dda86047e6b289641d0d43a",
+    "na_mpi_v064.out": "61aff826d52b116a6933d2692f1d5b4758bf6251ad405a208354404210478f5c"
+  }
+}
