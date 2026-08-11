@@ -1,0 +1,2 @@
+case_id,parent_case,origin,wc_eV,eta,delE_eV,ntraj,back_replicas,mpi_ranks,nstep,dt,tmax,qm_job_id,qm_seconds,poisson_job_id,poisson_seconds
+final_best,f02_hist_d01,confirm_top30,3.389460,2.9610e-5,-17.194874968839816,2500000,256,256,400,0.5,200,645037,194,645067+645068,855

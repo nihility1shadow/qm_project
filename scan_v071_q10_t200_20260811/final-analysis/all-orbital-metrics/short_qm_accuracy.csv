@@ -1,0 +1,2 @@
+label,path,n_points,tmax,qm_signal_rms,simulation_signal_rms,error_rms,Q_qm,Q_qm_first_half,Q_qm_second_half,Q_qm_min_half,amplitude_ratio,cosine_similarity,max_abs_occupation_error,max_particle_error
+SepMB-2.5M,E:\project_qm\scan_v071_q10_t200_20260811\final\final_best\poisson\ahm-sepmb-s10-n5-2500000.dat,401,200.0,1.5136776369780581e-05,1.510769827074914e-05,1.9015607046751154e-06,7.960185721426507,40.15435468849352,5.560455023297285,5.560455023297285,0.9980789767701469,0.9920958143928482,1.9385007406280685e-05,1.4624230715298836e-09
