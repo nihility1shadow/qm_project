@@ -61,6 +61,7 @@ def main() -> None:
     error = simulation_signal - qm_signal
 
     rows: list[dict[str, object]] = []
+    orbital_rows: list[dict[str, object]] = []
     start = 0.0
     while start < args.tmax - 1.0e-12:
         stop = min(start + args.window, args.tmax)
@@ -72,6 +73,26 @@ def main() -> None:
             quality(qm_signal[mask, orbital], error[mask, orbital])
             for orbital in active
         ]
+        for orbital, q_orbital in zip(active, orbital_q):
+            orbital_signal = qm_signal[mask, orbital]
+            orbital_estimate = simulation_signal[mask, orbital]
+            orbital_error = error[mask, orbital]
+            orbital_signal_rms = rms(orbital_signal)
+            orbital_rows.append(
+                {
+                    "window_start": start,
+                    "window_stop": stop,
+                    "orbital": int(orbital),
+                    "Q": q_orbital,
+                    "signal_rms": orbital_signal_rms,
+                    "error_rms": rms(orbital_error),
+                    "amplitude_ratio": (
+                        rms(orbital_estimate) / orbital_signal_rms
+                        if orbital_signal_rms > 0.0 else float("nan")
+                    ),
+                    "cosine": cosine(orbital_signal, orbital_estimate),
+                }
+            )
         signal_rms = rms(signal)
         q_active = quality(signal, active_error)
         multiplier = (args.target_q / q_active) ** 2 if q_active > 0.0 else float("inf")
@@ -115,6 +136,12 @@ def main() -> None:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
+    with (args.out_dir / "per_orbital_window_metrics.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(orbital_rows[0]))
+        writer.writeheader()
+        writer.writerows(orbital_rows)
     (args.out_dir / "long_window_metrics.json").write_text(
         json.dumps(summary, indent=2, allow_nan=True) + "\n", encoding="utf-8"
     )

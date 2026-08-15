@@ -301,7 +301,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   if(env_nwf) nwf = atoi(env_nwf);
   if(nwf < 0) nwf = 0;
   if(nwf > nstep) nwf = nstep;
-  int forced_measure_stride = env_measure_stride ? atoi(env_measure_stride) : 1;
+  int forced_measure_stride = env_measure_stride ? atoi(env_measure_stride) : 0;
   if(forced_measure_stride < 0) forced_measure_stride = 0;
   int back_replicas = env_back_replicas ? atoi(env_back_replicas) : 256;
   if(back_replicas < 1) back_replicas = 1;
@@ -314,7 +314,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       ? atoi(env_stratify_single_jump) != 0 : true;
   const bool sample_back_orbitals = env_sample_back_orbitals
       ? atoi(env_sample_back_orbitals) != 0 : true;
-  int exact_back_jumps = env_exact_back_jumps ? atoi(env_exact_back_jumps) : 1;
+  int exact_back_jumps = env_exact_back_jumps ? atoi(env_exact_back_jumps) : 4;
   if(exact_back_jumps < 0) exact_back_jumps = 0;
   if(exact_back_jumps > 6) exact_back_jumps = 6;
   double gap = 0.0;
@@ -1062,7 +1062,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fprintf(FL, exact_orbitals
         ? (sample_back_orbitals
             ? (exact_back_jumps > 0
-              ? "#PATCH_CHECK: SepMBpoisson v0.76 continuous fast-time-sampler candidate\n"
+              ? "#PATCH_CHECK: SepMBpoisson v0.81 continuous adaptive-time-sampler active\n"
               : "#PATCH_CHECK: SepMBpoisson v0.66 sampled-backward-orbital active\n")
             : (stratify_single_jump
               ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"

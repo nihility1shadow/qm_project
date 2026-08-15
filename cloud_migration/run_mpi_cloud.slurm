@@ -1,0 +1,68 @@
+#!/bin/bash
+#SBATCH --job-name=qm-mpi
+#SBATCH --partition=cmh
+#SBATCH --nodes=1
+#SBATCH --ntasks=4
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=1G
+#SBATCH --time=7-00:00:00
+#SBATCH --output=cloud-slurm-%j.out
+#SBATCH --error=cloud-slurm-%j.err
+
+set -euo pipefail
+
+module purge
+module load gcc/12.1.0
+module load openmpi/4.1.8
+
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+
+PROJECT_DIR=/data/home/yd101802/yd101802/nonadia
+export LD_LIBRARY_PATH="$PROJECT_DIR/.deps/install/lib:${LD_LIBRARY_PATH-}"
+RUN_DIR="$PROJECT_DIR/cloud-runs/$SLURM_JOB_ID"
+mkdir -p "$RUN_DIR"
+cd "$RUN_DIR"
+
+NTRAJ=${1:-100}
+NORB=${2:-10}
+NEL=${3:-5}
+JOB=${4:-1}
+EXECUTABLE=${EXECUTABLE:-na_mpi_cloud.out}
+
+# Reproducible 500 a.u. defaults selected by the v0.81 validation scan.
+export AHM_WC_EV=${AHM_WC_EV:-2.7}
+export AHM_ETA=${AHM_ETA:-2.0e-6}
+export AHM_DELE_EV=${AHM_DELE_EV:--17.194874968839816}
+export AHM_NSTEP=${AHM_NSTEP:-1000}
+export SEP_MB_TMAX=${SEP_MB_TMAX:-500}
+export SEP_MB_MEASURE_STRIDE=${SEP_MB_MEASURE_STRIDE:-0}
+export SEP_MB_BACK_REPLICAS=${SEP_MB_BACK_REPLICAS:-256}
+export SEP_MB_STRATIFY_FORWARD_COUNT=${SEP_MB_STRATIFY_FORWARD_COUNT:-1}
+export SEP_MB_EXACT_ORBITALS=${SEP_MB_EXACT_ORBITALS:-1}
+export SEP_MB_STRATIFY_SINGLE_JUMP_TIME=${SEP_MB_STRATIFY_SINGLE_JUMP_TIME:-1}
+export SEP_MB_SAMPLE_BACK_ORBITALS=${SEP_MB_SAMPLE_BACK_ORBITALS:-1}
+export SEP_MB_EXACT_BACK_JUMPS=${SEP_MB_EXACT_BACK_JUMPS:-4}
+
+{
+  echo "job_id=$SLURM_JOB_ID"
+  echo "nodes=$SLURM_JOB_NUM_NODES tasks=$SLURM_NTASKS"
+  echo "command=./$EXECUTABLE 10 $JOB $NTRAJ $NORB $NEL"
+  echo "AHM_WC_EV=$AHM_WC_EV"
+  echo "AHM_ETA=$AHM_ETA"
+  echo "AHM_DELE_EV=$AHM_DELE_EV"
+  echo "AHM_NSTEP=$AHM_NSTEP"
+  echo "SEP_MB_TMAX=$SEP_MB_TMAX"
+  echo "SEP_MB_MEASURE_STRIDE=$SEP_MB_MEASURE_STRIDE"
+  echo "SEP_MB_BACK_REPLICAS=$SEP_MB_BACK_REPLICAS"
+  echo "SEP_MB_STRATIFY_FORWARD_COUNT=$SEP_MB_STRATIFY_FORWARD_COUNT"
+  echo "SEP_MB_EXACT_ORBITALS=$SEP_MB_EXACT_ORBITALS"
+  echo "SEP_MB_STRATIFY_SINGLE_JUMP_TIME=$SEP_MB_STRATIFY_SINGLE_JUMP_TIME"
+  echo "SEP_MB_SAMPLE_BACK_ORBITALS=$SEP_MB_SAMPLE_BACK_ORBITALS"
+  echo "SEP_MB_EXACT_BACK_JUMPS=$SEP_MB_EXACT_BACK_JUMPS"
+} > run-info.txt
+
+mpirun --bind-to core --map-by core -np "$SLURM_NTASKS" \
+  "$PROJECT_DIR/$EXECUTABLE" 10 "$JOB" "$NTRAJ" "$NORB" "$NEL" \
+  > program.out 2>&1

@@ -1,0 +1,2 @@
+label,path,n_points,tmax,qm_signal_rms,simulation_signal_rms,error_rms,Q_qm,Q_qm_first_half,Q_qm_second_half,Q_qm_min_half,amplitude_ratio,cosine_similarity,max_abs_occupation_error,max_particle_error
+v081_45m,E:\project_qm\scan_v076_t500_20260815\final_45m\combined\ahm-sepmb-s10-n5-45000000.dat,1001,500.0,1.0187619392730737e-06,1.0230347110335124e-06,2.649459261293388e-08,38.45169292302098,80.24188335244871,28.65154335456668,28.65154335456668,1.0041940826367026,0.9996719977215897,2.3019381889533008e-07,1.9178710175538072e-08

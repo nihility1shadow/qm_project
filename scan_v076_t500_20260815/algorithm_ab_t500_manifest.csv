@@ -1,0 +1,5 @@
+case_id,wc_eV,eta,delE_eV,ntraj,back_replicas,exact_back_jumps,exact_zero_back,algorithm,runtime_seconds,qm_path,simulation_path
+v076_t500,3.0,3.2e-6,-17.194874968839816,50000,256,4,0,v0.76,261,validation/v04r/qm/ahm-qm-s10-n5.dat,algorithm_ab_t500/v076/ahm-sepmb-s10-n5-50000.dat
+v078_exact_zero,3.0,3.2e-6,-17.194874968839816,50000,256,4,1,v0.78,519,validation/v04r/qm/ahm-qm-s10-n5.dat,algorithm_ab_t500/v078/ahm-sepmb-s10-n5-50000.dat
+v079_hash_time,3.0,3.2e-6,-17.194874968839816,50000,256,4,0,v0.79,267,validation/v04r/qm/ahm-qm-s10-n5.dat,algorithm_ab_t500/v079/ahm-sepmb-s10-n5-50000.dat
+v080_both,3.0,3.2e-6,-17.194874968839816,50000,256,4,1,v0.80,506,validation/v04r/qm/ahm-qm-s10-n5.dat,algorithm_ab_t500/v080/ahm-sepmb-s10-n5-50000.dat

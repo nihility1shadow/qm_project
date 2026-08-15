@@ -1,0 +1,13 @@
+case_id,wc_eV,eta,delE_eV,ntraj,back_replicas,exact_back_jumps,algorithm,runtime_seconds,qm_path,simulation_path
+g01,2.70,2.0e-6,-17.194874968839816,50000,256,4,v0.76,614,parameter_grid_round2/g01/ahm-qm-s10-n5.dat,parameter_grid_round2/g01/ahm-sepmb-s10-n5-50000.dat
+g02,3.00,2.0e-6,-17.194874968839816,50000,256,4,v0.76,614,parameter_grid_round2/g02/ahm-qm-s10-n5.dat,parameter_grid_round2/g02/ahm-sepmb-s10-n5-50000.dat
+g03,3.30,2.0e-6,-17.194874968839816,50000,256,4,v0.76,612,parameter_grid_round2/g03/ahm-qm-s10-n5.dat,parameter_grid_round2/g03/ahm-sepmb-s10-n5-50000.dat
+g04,2.70,2.6e-6,-17.194874968839816,50000,256,4,v0.76,635,parameter_grid_round2/g04/ahm-qm-s10-n5.dat,parameter_grid_round2/g04/ahm-sepmb-s10-n5-50000.dat
+g05,3.00,2.6e-6,-17.194874968839816,50000,256,4,v0.76,643,parameter_grid_round2/g05/ahm-qm-s10-n5.dat,parameter_grid_round2/g05/ahm-sepmb-s10-n5-50000.dat
+g06,3.30,2.6e-6,-17.194874968839816,50000,256,4,v0.76,642,parameter_grid_round2/g06/ahm-qm-s10-n5.dat,parameter_grid_round2/g06/ahm-sepmb-s10-n5-50000.dat
+g07,2.70,3.2e-6,-17.194874968839816,50000,256,4,v0.76,667,parameter_grid_round2/g07/ahm-qm-s10-n5.dat,parameter_grid_round2/g07/ahm-sepmb-s10-n5-50000.dat
+g08,3.00,3.2e-6,-17.194874968839816,50000,256,4,v0.76,669,parameter_grid_round2/g08/ahm-qm-s10-n5.dat,parameter_grid_round2/g08/ahm-sepmb-s10-n5-50000.dat
+g09,3.30,3.2e-6,-17.194874968839816,50000,256,4,v0.76,666,parameter_grid_round2/g09/ahm-qm-s10-n5.dat,parameter_grid_round2/g09/ahm-sepmb-s10-n5-50000.dat
+r01,2.83,2.25e-6,-17.194874968839816,50000,256,4,v0.76,618,parameter_grid_round2/r01/ahm-qm-s10-n5.dat,parameter_grid_round2/r01/ahm-sepmb-s10-n5-50000.dat
+r02,3.17,2.85e-6,-17.194874968839816,50000,256,4,v0.76,649,parameter_grid_round2/r02/ahm-qm-s10-n5.dat,parameter_grid_round2/r02/ahm-sepmb-s10-n5-50000.dat
+r03,3.46,3.55e-6,-17.194874968839816,50000,256,4,v0.76,686,parameter_grid_round2/r03/ahm-qm-s10-n5.dat,parameter_grid_round2/r03/ahm-sepmb-s10-n5-50000.dat

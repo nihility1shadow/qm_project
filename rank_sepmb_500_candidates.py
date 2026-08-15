@@ -54,12 +54,17 @@ def analyze_case(
     error = estimate - signal
 
     windows: dict[str, float] = {}
+    orbital_windows: dict[str, float] = {}
     start = 0.0
     while start < tmax - 1.0e-12:
         stop = min(start + window, tmax)
         mask = (times >= start - 1.0e-12) & (times <= stop + 1.0e-12)
         windows[f"Q_{start:g}_{stop:g}"] = q_value(
             signal[mask][:, active], error[mask][:, active]
+        )
+        orbital_windows[f"min_orbital_Q_{start:g}_{stop:g}"] = min(
+            q_value(signal[mask, orbital], error[mask, orbital])
+            for orbital in active
         )
         start = stop
 
@@ -68,6 +73,10 @@ def analyze_case(
         if float(key.split("_")[-1]) <= target_stop + 1.0e-12
     ]
     minimum_q = min(target_values)
+    minimum_orbital_q = min(
+        value for key, value in orbital_windows.items()
+        if float(key.split("_")[-1]) <= target_stop + 1.0e-12
+    )
     target_mask = times <= target_stop + 1.0e-12
     target_signal = signal[target_mask][:, active]
     target_estimate = estimate[target_mask][:, active]
@@ -76,6 +85,8 @@ def analyze_case(
     )
     ntraj = int(row["ntraj"])
     multiplier = (target_q / minimum_q) ** 2 if minimum_q > 0.0 else math.inf
+    orbital_multiplier = (target_q / minimum_orbital_q) ** 2 \
+        if minimum_orbital_q > 0.0 else math.inf
     runtime = float(row.get("runtime_seconds") or "nan")
     result: dict[str, object] = dict(row)
     result.update(
@@ -83,10 +94,12 @@ def analyze_case(
             "n_points": int(len(times)),
             "actual_tmax": float(times[-1]),
             "min_Q_0_target": minimum_q,
+            "min_active_orbital_Q_0_target": minimum_orbital_q,
             "target_stop": target_stop,
             "target_Q": target_q,
             "projected_multiplier": multiplier,
             "projected_ntraj_Q_target": ntraj * multiplier,
+            "projected_ntraj_orbital_Q_target": ntraj * orbital_multiplier,
             "Q_per_sqrt_ntraj": minimum_q / math.sqrt(ntraj),
             "projected_runtime_seconds": runtime * multiplier,
             "signal_rms_active_0_target": rms(target_signal),
@@ -105,6 +118,7 @@ def analyze_case(
         }
     )
     result.update(windows)
+    result.update(orbital_windows)
     return result
 
 

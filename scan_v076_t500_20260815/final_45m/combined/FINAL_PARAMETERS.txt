@@ -1,0 +1,45 @@
+SepMB v0.81 final validated configuration
+
+Model:
+  Norb=10
+  Nel=5
+  delE_eV=-17.194874968839816
+  wc_eV=2.7
+  eta=2.0e-6
+  dt_au=0.5
+  nstep=1000
+  tmax_au=500
+
+Sampling:
+  total_forward_trajectories=45000000
+  independent_batches=3
+  trajectories_per_batch=15000000
+  mpi_ranks_per_batch=128
+  nodes_per_batch=2
+  back_replicas=256
+  exact_back_jumps=4
+  measure_stride=adaptive
+  actual_measurements=180
+  output_points=1001
+
+Validation against matching QM:
+  target_interval_au=0-400
+  minimum_aggregate_active_orbital_Q=22.733
+  minimum_individual_active_orbital_Q=17.173
+  full_0-500_Q=38.4517
+  full_0-500_amplitude_ratio=1.00419
+  full_0-500_cosine=0.999672
+  maximum_particle_number_error=1.918e-8
+
+Cluster jobs:
+  645602 runtime=00:40:12 seed=793001
+  645603 runtime=00:39:17 seed=793002
+  645604 runtime=00:39:06 seed=793003
+
+Active server version:
+  ahm-mb-sep.cpp sha256=ef696cd400e4bdb8b92e233a79e45a62af7fb1b018ae83ac3c64a8e22e7756f2
+  na_mpi_cloud.out sha256=b0b9fb8fbd528123f53519ebcd55c23077c163f73e042d6fa3d0c16c6e7bb3e9
+
+Rollback v0.71:
+  ahm-mb-sep-v071.cpp sha256=63179a2b501f2bf2de1b2dc84219538825aeba49b52fa1a9d4a6904685483e67
+  na_mpi_v071.out sha256=c63ac360b5cb06d08241bfdc464e19323a308f1c2e7c4caf68829dc9fd87ed38

@@ -1,0 +1,5 @@
+case_id,wc_eV,eta,delE_eV,ntraj,back_replicas,exact_back_jumps,measure_stride,algorithm,runtime_seconds,qm_path,simulation_path
+b128,2.7,2.0e-6,-17.194874968839816,200000,128,4,0,v0.76,24,parameter_grid_round2/g01/ahm-qm-s10-n5.dat,adaptive_b_ab/b128/ahm-sepmb-s10-n5-200000.dat
+b256,2.7,2.0e-6,-17.194874968839816,200000,256,4,0,v0.76,40,parameter_grid_round2/g01/ahm-qm-s10-n5.dat,adaptive_g01_validation/run1/ahm-sepmb-s10-n5-200000.dat
+b512,2.7,2.0e-6,-17.194874968839816,200000,512,4,0,v0.76,79,parameter_grid_round2/g01/ahm-qm-s10-n5.dat,adaptive_b_ab/b512/ahm-sepmb-s10-n5-200000.dat
+b1024,2.7,2.0e-6,-17.194874968839816,200000,1024,4,0,v0.76,144,parameter_grid_round2/g01/ahm-qm-s10-n5.dat,adaptive_b_ab/b1024/ahm-sepmb-s10-n5-200000.dat
