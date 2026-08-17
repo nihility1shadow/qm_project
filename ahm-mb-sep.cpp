@@ -122,6 +122,19 @@ int sepmb_sample_cdf(const vector<double> &cdf, const double u) {
   return pos == cdf.end() ? (int)cdf.size()-1 : (int)(pos-cdf.begin());
 }
 
+int sepmb_adaptive_back_replicas(const int step, const int final_step,
+    const int minimum, const int maximum, const double power) {
+  if(maximum <= minimum || final_step <= 0) return maximum;
+  double fraction = step*1.0/final_step;
+  if(fraction < 0.0) fraction = 0.0;
+  if(fraction > 1.0) fraction = 1.0;
+  const double scaled = pow(fraction, power);
+  int replicas = minimum + (int)((maximum-minimum)*scaled + 0.5);
+  if(replicas < minimum) replicas = minimum;
+  if(replicas > maximum) replicas = maximum;
+  return replicas;
+}
+
 
 }
 
@@ -291,11 +304,14 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_nwf  = getenv("SEP_MB_NWF"),
              *env_measure_stride = getenv("SEP_MB_MEASURE_STRIDE"),
              *env_back_replicas = getenv("SEP_MB_BACK_REPLICAS"),
+             *env_back_replicas_min = getenv("SEP_MB_BACK_REPLICAS_MIN"),
+             *env_back_replica_power = getenv("SEP_MB_BACK_REPLICA_POWER"),
              *env_stratify_forward = getenv("SEP_MB_STRATIFY_FORWARD_COUNT"),
              *env_exact_orbitals = getenv("SEP_MB_EXACT_ORBITALS"),
              *env_stratify_single_jump = getenv("SEP_MB_STRATIFY_SINGLE_JUMP_TIME"),
              *env_sample_back_orbitals = getenv("SEP_MB_SAMPLE_BACK_ORBITALS"),
-             *env_exact_back_jumps = getenv("SEP_MB_EXACT_BACK_JUMPS");
+             *env_exact_back_jumps = getenv("SEP_MB_EXACT_BACK_JUMPS"),
+             *env_all_order_back_dp = getenv("SEP_MB_ALL_ORDER_BACK_DP");
   double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
   int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
   if(env_nwf) nwf = atoi(env_nwf);
@@ -306,6 +322,14 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   int back_replicas = env_back_replicas ? atoi(env_back_replicas) : 256;
   if(back_replicas < 1) back_replicas = 1;
   if(back_replicas > 1024) back_replicas = 1024;
+  int back_replicas_min = env_back_replicas_min
+      ? atoi(env_back_replicas_min) : 16;
+  if(back_replicas_min < 1) back_replicas_min = 1;
+  if(back_replicas_min > back_replicas) back_replicas_min = back_replicas;
+  double back_replica_power = env_back_replica_power
+      ? atof(env_back_replica_power) : 2.0;
+  if(back_replica_power < 0.1) back_replica_power = 0.1;
+  if(back_replica_power > 8.0) back_replica_power = 8.0;
   const bool stratify_forward = env_stratify_forward
       ? atoi(env_stratify_forward) != 0 : true;
   const bool exact_orbitals = env_exact_orbitals
@@ -317,6 +341,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   int exact_back_jumps = env_exact_back_jumps ? atoi(env_exact_back_jumps) : 4;
   if(exact_back_jumps < 0) exact_back_jumps = 0;
   if(exact_back_jumps > 6) exact_back_jumps = 6;
+  const bool all_order_back_dp = env_all_order_back_dp
+      ? atoi(env_all_order_back_dp) != 0 : true;
   double gap = 0.0;
   for(int a : S0) {
     for(int b=0; b<Norb; b++) {
@@ -355,6 +381,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   }
   if(measure_steps.back() != nwf) measure_steps.push_back(nwf);
   int nmeas = measure_steps.size()-1;
+  long long back_replicas_per_forward = 0;
+  for(int m=1; m<=nmeas; m++) {
+    back_replicas_per_forward += sepmb_adaptive_back_replicas(
+        measure_steps[m], nwf, back_replicas_min, back_replicas,
+        back_replica_power);
+  }
   int *measure_slot = array1d<int>(nwf+1);
   for(int j=0; j<=nwf; j++) measure_slot[j] = -1;
   for(int j=0; j<=nmeas; j++) measure_slot[measure_steps[j]] = j;
@@ -367,7 +399,6 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                jump_strength   = sqrtNel*sqrtNvac*lambda*dt,
                jump_probability = jump_strength/(1.0+jump_strength),
                log_scale       = log1p(jump_strength),
-               inv_back_replicas = 1.0/back_replicas,
                inv_jump_normalization = 1.0/(lambda*sqrtNel*sqrtNvac);
   double p0, pt,  inv_ntraj = 1.0/ntraj,
           *sclf       = array1d<double>(nstep+1);
@@ -453,9 +484,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
     vector<vector<int> > back_orbital_targets;
     vector<vector<double> > back_orbital_factors;
-    dcomplex *sparse_back = sample_back_orbitals && exact_back_jumps > 0
+    dcomplex *sparse_back = sample_back_orbitals &&
+        (all_order_back_dp || exact_back_jumps > 0)
         ? array1d<dcomplex>(Nhs) : NULL,
-             *sparse_next = sample_back_orbitals && exact_back_jumps > 0
+             *sparse_next = sample_back_orbitals &&
+        (all_order_back_dp || exact_back_jumps > 0)
         ? array1d<dcomplex>(Nhs) : NULL;
     vector<unsigned long long> sparse_marks(Nhs, 0);
     vector<int> sparse_active, sparse_next_active;
@@ -563,15 +596,19 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         const double back_accept_prb = back_accept[j][parity][first_count];
         if(back_accept_prb <= 0.0) continue;
         const double count_shift = drand48();
+        const int back_replicas_j = sepmb_adaptive_back_replicas(j, nwf,
+            back_replicas_min, back_replicas, back_replica_power);
+        const double inv_back_replicas_j = 1.0/back_replicas_j;
 
-        for(int iback=0; iback<back_replicas; iback++) {
+        for(int iback=0; iback<back_replicas_j; iback++) {
           const double count_u = fmod(count_shift +
-              iback*inv_back_replicas, 1.0);
+              iback*inv_back_replicas_j, 1.0);
           const int nj_back = sepmb_sample_conditioned_count(
               back_accept[j][parity], j, parity, first_count, count_u);
           if(nj_back < 0) continue;
-          const bool sparse_exact_back = sample_back_orbitals && exact_back_jumps > 0 &&
-              nj_back <= exact_back_jumps;
+          const bool sparse_exact_back = sample_back_orbitals &&
+              (all_order_back_dp ||
+               (exact_back_jumps > 0 && nj_back <= exact_back_jumps));
           if(sepmb_sample_jump_times_stratified(j, nj_back,
                 ((unsigned long long)(trajectory_offset+n)/nstep)*back_replicas+iback,
                 backward_time_shift, stratify_single_jump,
@@ -680,7 +717,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             abort();
           }
           const dcomplex ket_scale = wgt_for*Iton[nj_for%4]*sclf[j]
-                                     *inv_ntraj*inv_back_replicas,
+                                     *inv_ntraj*inv_back_replicas_j,
                          bra_scale = wgt_back*Iton[nj_back%4]
                                      *back_accept_prb*sclf[j];
           if(sparse_exact_back) {
@@ -896,12 +933,15 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                  wgt_for = wgt;
         set<int> state_for = state;
         const double count_shift = drand48();
-        for(int iback=0; iback<back_replicas; iback++) {
+        const int back_replicas_j = sepmb_adaptive_back_replicas(j, nwf,
+            back_replicas_min, back_replicas, back_replica_power);
+        const double inv_back_replicas_j = 1.0/back_replicas_j;
+        for(int iback=0; iback<back_replicas_j; iback++) {
 #ifndef _CHECK_PATH_
           // Randomly shifted stratification keeps every replica marginally
           // uniform while spreading replicas over the conditional jump-count CDF.
           const double count_u = fmod(count_shift +
-              iback*inv_back_replicas, 1.0);
+              iback*inv_back_replicas_j, 1.0);
           int nj_back = sepmb_sample_conditioned_count(
               back_accept[j][nj&1], j, nj&1, nj_min, count_u);
           if(nj_back < 0) continue;
@@ -1029,7 +1069,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           printf("alp : %+1.16e %+1.16e %+1.16e %+1.16e\n",
                  real(alp_for), imag(alp_for), real(alp), imag(alp));
 #endif
-          csproj(wgt_for*Iton[nj%4]*sclf[j]*inv_ntraj*inv_back_replicas,
+          csproj(wgt_for*Iton[nj%4]*sclf[j]*inv_ntraj*inv_back_replicas_j,
                  alp_for, wgt*Iton[nj_back%4]*measure, alp,
                  excited, state, prb[iprb]);
 
@@ -1061,8 +1101,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     FILE *FL = fopen(fnm, "w");
     fprintf(FL, exact_orbitals
         ? (sample_back_orbitals
-            ? (exact_back_jumps > 0
-              ? "#PATCH_CHECK: SepMBpoisson v0.81 continuous adaptive-time-sampler active\n"
+            ? (all_order_back_dp || exact_back_jumps > 0
+              ? (all_order_back_dp
+                ? "#PATCH_CHECK: SepMBpoisson v0.82 all-order-back-DP adaptive-B active\n"
+                : "#PATCH_CHECK: SepMBpoisson v0.81 continuous adaptive-time-sampler active\n")
               : "#PATCH_CHECK: SepMBpoisson v0.66 sampled-backward-orbital active\n")
             : (stratify_single_jump
               ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
@@ -1075,6 +1117,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             stratify_forward ? 1 : 0, exact_orbitals ? 1 : 0,
             stratify_single_jump ? 1 : 0, sample_back_orbitals ? 1 : 0,
             exact_back_jumps);
+    fprintf(FL, "#backward DP: all_order=%d replicas_min=%d replicas_max=%d replica_power=%1.8e replicas_per_forward=%lld\n",
+            all_order_back_dp ? 1 : 0, back_replicas_min, back_replicas,
+            back_replica_power, back_replicas_per_forward);
     fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e forced_stride=%d\n",
             gap, period_steps, nmeas, nwf, nwf*dt, forced_measure_stride);
     double *rlt = array1d<double>(Norb+3);
