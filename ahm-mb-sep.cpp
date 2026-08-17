@@ -101,6 +101,56 @@ unsigned long long sepmb_random_shift() {
   return ((unsigned long long)lrand48()<<32) ^ (unsigned long long)lrand48();
 }
 
+struct SepmbFockContext {
+  int nhs;
+  int nfock;
+  const DSPMatrix *excitation;
+  const double *electronic_energy;
+  const int *molecule_occupied;
+  double frequency;
+  double half_displacement;
+  double constant_shift;
+  double energy_origin;
+  dcomplex *hamiltonian_work;
+};
+
+void sepmb_fock_rhs(const int dimension, const double,
+    const double accumulator_factor, const double derivative_factor,
+    void *parameters,
+    dcomplex *const state, dcomplex *derivative) {
+  SepmbFockContext *context = (SepmbFockContext *)parameters;
+  const int nhs = context->nhs,
+            nfock = context->nfock;
+  if(dimension != nhs*nfock) abort();
+  dcomplex *hpsi = context->hamiltonian_work;
+  bzero(hpsi, dimension*sizeof(dcomplex));
+
+  for(int n=0; n<nfock; n++) {
+    context->excitation->multiply(state+n*nhs, hpsi+n*nhs);
+  }
+  for(int n=0; n<nfock; n++) {
+    const double root_down = n > 0 ? sqrt((double)n) : 0.0,
+                 root_up = n+1 < nfock ? sqrt((double)(n+1)) : 0.0;
+    for(int s=0; s<nhs; s++) {
+      const int index = n*nhs+s;
+      const double diagonal = context->electronic_energy[s]
+          +context->frequency*(n+0.5)+context->constant_shift
+          -context->energy_origin;
+      const double linear = context->molecule_occupied[s]
+          ? -context->frequency*context->half_displacement
+          : context->frequency*context->half_displacement;
+      dcomplex value = hpsi[index]+diagonal*state[index];
+      if(n > 0) value += linear*root_down*state[(n-1)*nhs+s];
+      if(n+1 < nfock) value += linear*root_up*state[(n+1)*nhs+s];
+      hpsi[index] = value;
+    }
+  }
+  for(int index=0; index<dimension; index++) {
+    derivative[index] = accumulator_factor*derivative[index]
+        -I*derivative_factor*hpsi[index];
+  }
+}
+
 vector<double> sepmb_binomial_cdf(const int nstep, const double probability) {
   vector<double> cdf(nstep+1, 0.0);
   long double mass = powl(1.0-probability, nstep);
@@ -311,7 +361,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_stratify_single_jump = getenv("SEP_MB_STRATIFY_SINGLE_JUMP_TIME"),
              *env_sample_back_orbitals = getenv("SEP_MB_SAMPLE_BACK_ORBITALS"),
              *env_exact_back_jumps = getenv("SEP_MB_EXACT_BACK_JUMPS"),
-             *env_all_order_back_dp = getenv("SEP_MB_ALL_ORDER_BACK_DP");
+             *env_all_order_back_dp = getenv("SEP_MB_ALL_ORDER_BACK_DP"),
+             *env_recurrence_dense = getenv("SEP_MB_RECURRENCE_DENSE"),
+             *env_recurrence_half_width = getenv("SEP_MB_RECURRENCE_HALF_WIDTH"),
+             *env_recurrence_stride = getenv("SEP_MB_RECURRENCE_STRIDE"),
+             *env_deterministic_fock = getenv("SEP_MB_DETERMINISTIC_FOCK"),
+             *env_fock_states = getenv("SEP_MB_FOCK_STATES");
   double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
   int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
   if(env_nwf) nwf = atoi(env_nwf);
@@ -343,6 +398,27 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   if(exact_back_jumps > 6) exact_back_jumps = 6;
   const bool all_order_back_dp = env_all_order_back_dp
       ? atoi(env_all_order_back_dp) != 0 : true;
+  const bool recurrence_dense = env_recurrence_dense
+      ? atoi(env_recurrence_dense) != 0 : true;
+  const bool deterministic_fock = env_deterministic_fock
+      ? atoi(env_deterministic_fock) != 0 : true;
+  int fock_states = env_fock_states ? atoi(env_fock_states) : 384;
+  if(fock_states < 16) fock_states = 16;
+  if(fock_states > 512) fock_states = 512;
+  const double vibrational_period = freq > 0.0
+      ? 2.0*acos(-1.0)/freq : 0.0;
+  double recurrence_half_width = env_recurrence_half_width
+      ? atof(env_recurrence_half_width) : -1.0;
+  if(recurrence_half_width < 0.0) {
+    recurrence_half_width = 0.05*vibrational_period;
+  }
+  if(vibrational_period > 0.0 &&
+      recurrence_half_width > 0.5*vibrational_period) {
+    recurrence_half_width = 0.5*vibrational_period;
+  }
+  int recurrence_stride = env_recurrence_stride
+      ? atoi(env_recurrence_stride) : 3;
+  if(recurrence_stride < 1) recurrence_stride = 1;
   double gap = 0.0;
   for(int a : S0) {
     for(int b=0; b<Norb; b++) {
@@ -366,20 +442,38 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   const int stride_mid   = max(1, period_steps/128);
   const int stride_slow  = max(stride_mid, period_steps/64);
   const int stride_late  = max(stride_slow, period_steps/32);
-  vector<int> measure_steps;
-  measure_steps.push_back(0);
+  set<int> measure_step_set;
+  measure_step_set.insert(0);
   int last_step = 0;
   for(int j=1; j<=nwf; ) {
     int stride = forced_measure_stride > 0 ? forced_measure_stride :
                  (j <= dense_end ? 1 : (j <= mid_end ? stride_mid :
                  (j <= slow_end ? stride_slow : stride_late)));
     if(j > last_step) {
-      measure_steps.push_back(j);
+      measure_step_set.insert(j);
       last_step = j;
     }
     j += stride;
   }
-  if(measure_steps.back() != nwf) measure_steps.push_back(nwf);
+  measure_step_set.insert(nwf);
+  if(recurrence_dense && forced_measure_stride == 0 &&
+      vibrational_period > 0.0 && recurrence_half_width > 0.0) {
+    const double recurrence_period_steps = vibrational_period/dt;
+    const int half_width_steps =
+        max(1, (int)(recurrence_half_width/dt + 0.5));
+    for(int recurrence=1;
+        recurrence*recurrence_period_steps <= nwf+half_width_steps;
+        recurrence++) {
+      const int center = (int)(recurrence*recurrence_period_steps + 0.5),
+                left = max(1, center-half_width_steps),
+                right = min(nwf, center+half_width_steps);
+      for(int j=left; j<=right; j+=recurrence_stride) {
+        measure_step_set.insert(j);
+      }
+      if(center >= 0 && center <= nwf) measure_step_set.insert(center);
+    }
+  }
+  vector<int> measure_steps(measure_step_set.begin(), measure_step_set.end());
   int nmeas = measure_steps.size()-1;
   long long back_replicas_per_forward = 0;
   for(int m=1; m<=nmeas; m++) {
@@ -387,6 +481,118 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         measure_steps[m], nwf, back_replicas_min, back_replicas,
         back_replica_power);
   }
+
+  if(deterministic_fock) {
+    if(myid==master) {
+      int initial_basis = -1;
+      int *molecule_occupied = array1d<int>(Nhs);
+      for(int s=0; s<Nhs; s++) {
+        set<int> basis_state;
+        for(int k=0; k<Nel; k++) basis_state.insert(occ[s][k]);
+        molecule_occupied[s] = basis_state.find(0) != basis_state.end();
+        if(basis_state == S0) initial_basis = s;
+      }
+      if(initial_basis < 0) {
+        cerr<<"failed to locate the initial determinant in Fock resummation.\n";
+        abort();
+      }
+
+      const double displacement = sqrt(0.5*mass*freq)*delx,
+                   half_displacement = 0.5*displacement,
+                   constant_shift = 0.25*freq*displacement*displacement,
+                   coordinate_factor = sqrt(1.0/(2.0*mass*freq));
+      const dcomplex centered_alpha = alp_init-half_displacement;
+      const int dimension = Nhs*fock_states;
+      dcomplex *wavefunction = array1d<dcomplex>(dimension),
+               *work = array1d<dcomplex>(dimension),
+               *hamiltonian_work = array1d<dcomplex>(dimension);
+      dcomplex coefficient = wgt_init*exp(-0.5*norm(centered_alpha));
+      wavefunction[initial_basis] = coefficient;
+      for(int n=1; n<fock_states; n++) {
+        coefficient *= centered_alpha/sqrt((double)n);
+        wavefunction[n*Nhs+initial_basis] = coefficient;
+      }
+
+      SepmbFockContext context;
+      context.nhs = Nhs;
+      context.nfock = fock_states;
+      context.excitation = &exc;
+      context.electronic_energy = Eocc;
+      context.molecule_occupied = molecule_occupied;
+      context.frequency = freq;
+      context.half_displacement = half_displacement;
+      context.constant_shift = constant_shift;
+      context.energy_origin = Eocc[initial_basis]+0.5*freq;
+      context.hamiltonian_work = hamiltonian_work;
+
+      char fnm[256];
+      sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
+      FILE *FL = fopen(fnm, "w");
+      fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.91 deterministic-Fock-resummation active\n");
+      fprintf(FL, "#discretizing the bath:\n");
+      for(int n=0; n<Norb; n++) {
+        fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
+      }
+      double initial_fock_norm = 0.0;
+      for(int n=0; n<fock_states; n++) {
+        initial_fock_norm += norm(wavefunction[n*Nhs+initial_basis]);
+      }
+      fprintf(FL, "#deterministic Fock resummation: states=%d dimension=%d center=%1.16e initial_norm=%1.16e ntraj_label_only=%d\n",
+              fock_states, dimension, 0.5*delx, initial_fock_norm, ntraj);
+
+      double *occupations = array1d<double>(Norb);
+      for(int step=0; step<=nwf; step++) {
+        bzero(occupations, Norb*sizeof(double));
+        double wave_norm = 0.0,
+               coordinate_ladder = 0.0,
+               vibration_energy = 0.0;
+        for(int s=0; s<Nhs; s++) {
+          double determinant_probability = 0.0;
+          const double linear = molecule_occupied[s]
+              ? -freq*half_displacement : freq*half_displacement;
+          for(int n=0; n<fock_states; n++) {
+            const int index = n*Nhs+s;
+            const double probability = norm(wavefunction[index]);
+            determinant_probability += probability;
+            vibration_energy += (freq*(n+0.5)+constant_shift)*probability;
+            if(n+1 < fock_states) {
+              const double ladder = 2.0*sqrt((double)(n+1))*real(
+                  conj(wavefunction[index])*wavefunction[(n+1)*Nhs+s]);
+              coordinate_ladder += ladder;
+              vibration_energy += linear*ladder;
+            }
+          }
+          wave_norm += determinant_probability;
+          for(int k=0; k<Nel; k++) {
+            occupations[occ[s][k]] += determinant_probability;
+          }
+        }
+        const double average_position = wave_norm > 0.0
+            ? 0.5*delx+coordinate_factor*coordinate_ladder/wave_norm : 0.0,
+                     average_vibration = wave_norm > 0.0
+            ? vibration_energy/wave_norm : 0.0;
+        fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e",
+                step*dt, (double)Nel, average_position, average_vibration);
+        for(int orbital=0; orbital<Norb; orbital++) {
+          fprintf(FL, " %+1.16e", wave_norm > 0.0
+              ? occupations[orbital]/wave_norm : 0.0);
+        }
+        fprintf(FL, "\n");
+        if(step < nwf) {
+          Clsrk8(wavefunction, work, dimension, step*dt, dt,
+                  (void *)&context, sepmb_fock_rhs);
+        }
+      }
+      fclose(FL);
+      free1d(occupations);
+      free1d(wavefunction);
+      free1d(work);
+      free1d(hamiltonian_work);
+      free1d(molecule_occupied);
+    }
+    return;
+  }
+
   int *measure_slot = array1d<int>(nwf+1);
   for(int j=0; j<=nwf; j++) measure_slot[j] = -1;
   for(int j=0; j<=nmeas; j++) measure_slot[measure_steps[j]] = j;
@@ -610,7 +816,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               (all_order_back_dp ||
                (exact_back_jumps > 0 && nj_back <= exact_back_jumps));
           if(sepmb_sample_jump_times_stratified(j, nj_back,
-                ((unsigned long long)(trajectory_offset+n)/nstep)*back_replicas+iback,
+                (unsigned long long)(trajectory_offset+n)*back_replicas_j+iback,
                 backward_time_shift, stratify_single_jump,
                 jumps_back) != nj_back) continue;
 
@@ -947,7 +1153,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           if(nj_back < 0) continue;
           bzero(jumps_back, Jmax*sizeof(int));
           if(sepmb_sample_jump_times_stratified(j, nj_back,
-                ((unsigned long long)(trajectory_offset+n)/nstep)*back_replicas+iback,
+                (unsigned long long)(trajectory_offset+n)*back_replicas_j+iback,
                 backward_time_shift, stratify_single_jump,
                 jumps_back) != nj_back) continue;
 
@@ -1103,7 +1309,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         ? (sample_back_orbitals
             ? (all_order_back_dp || exact_back_jumps > 0
               ? (all_order_back_dp
-                ? "#PATCH_CHECK: SepMBpoisson v0.82 all-order-back-DP adaptive-B active\n"
+                ? (recurrence_dense
+                ? "#PATCH_CHECK: SepMBpoisson v0.84 recurrence-aware measurement active\n"
+                  : "#PATCH_CHECK: SepMBpoisson v0.82 all-order-back-DP adaptive-B active\n")
                 : "#PATCH_CHECK: SepMBpoisson v0.81 continuous adaptive-time-sampler active\n")
               : "#PATCH_CHECK: SepMBpoisson v0.66 sampled-backward-orbital active\n")
             : (stratify_single_jump
@@ -1115,13 +1323,17 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fprintf(FL, "#sampling: jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
             jump_strength, jump_probability, log_scale, back_replicas,
             stratify_forward ? 1 : 0, exact_orbitals ? 1 : 0,
-            stratify_single_jump ? 1 : 0, sample_back_orbitals ? 1 : 0,
+            stratify_single_jump ? 1 : 0,
+            sample_back_orbitals ? 1 : 0,
             exact_back_jumps);
     fprintf(FL, "#backward DP: all_order=%d replicas_min=%d replicas_max=%d replica_power=%1.8e replicas_per_forward=%lld\n",
             all_order_back_dp ? 1 : 0, back_replicas_min, back_replicas,
             back_replica_power, back_replicas_per_forward);
     fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e forced_stride=%d\n",
             gap, period_steps, nmeas, nwf, nwf*dt, forced_measure_stride);
+    fprintf(FL, "#recurrence measurement: enabled=%d vibrational_period=%1.16e half_width=%1.16e stride_steps=%d\n",
+            recurrence_dense ? 1 : 0, vibrational_period,
+            recurrence_half_width, recurrence_stride);
     double *rlt = array1d<double>(Norb+3);
     int il = 0;
     for(int t=0; t<=nwf; t++)  {
