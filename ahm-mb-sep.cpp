@@ -9,7 +9,9 @@
 #include "./qmfft.h"
 #include "./qho.h"
 #include "./Kondo-path-sampler.h"
+#include <cmath>
 #include <cstdlib>
+#include <sys/resource.h>
 
 #define _YYY_REALSPACE_AV_
 
@@ -36,20 +38,88 @@ double sepmb_kondo_degeneracy(const int Norb, const int Nel,
     : sepmb_binom(Nel, d+1)*sepmb_binom(Nvac-1, d);
 }
 
-int sepmb_sample_conditioned_count(const double *tail, const int nstep,
-    const int parity, const int kmin, const double u) {
+long double sepmb_binomial_mass(const int n, const int k,
+    const long double probability) {
+  if(k < 0 || k > n) return 0.0L;
+  if(probability <= 0.0L) return k == 0 ? 1.0L : 0.0L;
+  if(probability >= 1.0L) return k == n ? 1.0L : 0.0L;
+  const long double log_mass = lgammal(n+1.0L)-lgammal(k+1.0L)
+      -lgammal(n-k+1.0L)+k*logl(probability)
+      +(n-k)*log1pl(-probability);
+  return expl(log_mass);
+}
+
+double sepmb_conditioned_count_probability(const int nstep,
+    const double probability, const int parity, const int kmin) {
   int first = kmin;
   if((first&1) != parity) first++;
-  if(first > nstep || tail[first] <= 0.0) return -1;
-
-  double target = u*tail[first];
-  for(int k=first; k<=nstep; k+=2) {
-    const double next_tail = k+2 <= nstep ? tail[k+2] : 0.0;
-    const double mass = tail[k] - next_tail;
-    if(target < mass || k+2 > nstep) return k;
-    target -= mass;
+  if(first > nstep) return 0.0;
+  if(probability <= 0.0) return first == 0 ? 1.0 : 0.0;
+  if(probability >= 1.0) {
+    return nstep >= first && (nstep&1) == parity ? 1.0 : 0.0;
   }
-  return -1;
+
+  const long double signed_base = 1.0L-2.0L*probability;
+  long double parity_moment = powl(fabsl(signed_base), nstep);
+  if(signed_base < 0.0L && (nstep&1)) parity_moment = -parity_moment;
+  long double accepted = 0.5L*(1.0L+(parity == 0
+      ? parity_moment : -parity_moment));
+  for(int k=parity; k<first; k+=2) {
+    accepted -= sepmb_binomial_mass(nstep, k, probability);
+  }
+  if(accepted < 0.0L) accepted = 0.0L;
+  if(accepted > 1.0L) accepted = 1.0L;
+  return (double)accepted;
+}
+
+int sepmb_sample_parity_binomial_up(const int nstep,
+    const long double probability, const int first, const int last,
+    long double target, const bool complement,
+    const long double cached_first_mass) {
+  if(first > last) return -1;
+  long double mass = cached_first_mass >= 0.0L
+      ? cached_first_mass
+      : sepmb_binomial_mass(nstep, first, probability);
+  const long double odds2 = probability*probability/
+      ((1.0L-probability)*(1.0L-probability));
+  int fallback = first;
+  for(int k=first; k<=last; k+=2) {
+    fallback = k;
+    if(target < mass) return complement ? nstep-k : k;
+    target -= mass;
+    if(k+2 <= last) {
+      const long double numerator = (long double)(nstep-k)*(nstep-k-1),
+                        denominator = (long double)(k+1)*(k+2);
+      mass *= numerator*odds2/denominator;
+    }
+  }
+  // Only reachable through roundoff in the closed-form acceptance probability.
+  return complement ? nstep-fallback : fallback;
+}
+
+int sepmb_sample_conditioned_count_lowmem(const int nstep,
+    const double probability, const int parity, const int kmin,
+    const double accepted_probability, const long double first_mass,
+    const double u) {
+  int first = kmin;
+  if((first&1) != parity) first++;
+  if(first > nstep || accepted_probability <= 0.0) return -1;
+  if(probability <= 0.0) return first == 0 ? 0 : -1;
+  if(probability >= 1.0) {
+    return nstep >= first && (nstep&1) == parity ? nstep : -1;
+  }
+
+  long double target = (long double)u*accepted_probability;
+  if(probability <= 0.5) {
+    return sepmb_sample_parity_binomial_up(nstep, probability,
+        first, nstep, target, false, first_mass);
+  }
+
+  // For p>1/2 sample the smaller number of failures L=nstep-K upward.
+  const int failure_parity = (nstep-parity)&1,
+            failure_last = nstep-first;
+  return sepmb_sample_parity_binomial_up(nstep, 1.0L-probability,
+      failure_parity, failure_last, target, true, -1.0L);
 }
 
 int sepmb_sample_jump_times(const int nstep, const int njump, int *jumps) {
@@ -641,23 +711,18 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 #endif
   }
 
-  double ***back_accept = array3d<double>(nwf+1, 2, nwf+2);
+  // Cache only the two parity totals needed by the common exact-orbital path.
+  // The legacy implementation cached every lower cutoff and used O(nwf^2) memory.
+  double **back_accept_parity = array2d<double>(nwf+1, 2);
+  long double **back_first_mass = array2d<long double>(nwf+1, 2);
   for(int jt=0; jt<=nwf; jt++) {
-    double *pk = array1d<double>(jt+1);
-    pk[0] = pow(1.0-jump_probability, jt);
-    for(int k=1; k<=jt; k++) {
-      pk[k] = pk[k-1]*(jt-k+1)*jump_probability/
-              (k*(1.0-jump_probability));
-    }
     for(int parity=0; parity<2; parity++) {
-      double tail = 0.0;
-      back_accept[jt][parity][jt+1] = 0.0;
-      for(int k=jt; k>=0; k--) {
-        if((k&1) == parity) tail += pk[k];
-        back_accept[jt][parity][k] = tail;
-      }
+      back_accept_parity[jt][parity] =
+          sepmb_conditioned_count_probability(jt, jump_probability,
+              parity, parity);
+      back_first_mass[jt][parity] =
+          sepmb_binomial_mass(jt, parity, jump_probability);
     }
-    free1d(pk);
   }
 
   if(exact_orbitals) {
@@ -799,7 +864,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
         const int parity = nj_for&1,
                   first_count = parity;
-        const double back_accept_prb = back_accept[j][parity][first_count];
+        const double back_accept_prb = back_accept_parity[j][parity];
         if(back_accept_prb <= 0.0) continue;
         const double count_shift = drand48();
         const int back_replicas_j = sepmb_adaptive_back_replicas(j, nwf,
@@ -809,8 +874,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         for(int iback=0; iback<back_replicas_j; iback++) {
           const double count_u = fmod(count_shift +
               iback*inv_back_replicas_j, 1.0);
-          const int nj_back = sepmb_sample_conditioned_count(
-              back_accept[j][parity], j, parity, first_count, count_u);
+          const int nj_back = sepmb_sample_conditioned_count_lowmem(
+              j, jump_probability, parity, first_count,
+              back_accept_prb, back_first_mass[j][parity], count_u);
           if(nj_back < 0) continue;
           const bool sparse_exact_back = sample_back_orbitals &&
               (all_order_back_dp ||
@@ -1133,7 +1199,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           abort();
         }
         if(nj_min > j) continue;
-        double back_accept_prb = back_accept[j][nj&1][nj_min];
+        const int back_parity = nj&1;
+        double back_accept_prb = nj_min == back_parity
+            ? back_accept_parity[j][back_parity]
+            : sepmb_conditioned_count_probability(
+                j, jump_probability, back_parity, nj_min);
         if(back_accept_prb <= 0.0) continue;
         dcomplex alp_for = alp,
                  wgt_for = wgt;
@@ -1148,8 +1218,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           // uniform while spreading replicas over the conditional jump-count CDF.
           const double count_u = fmod(count_shift +
               iback*inv_back_replicas_j, 1.0);
-          int nj_back = sepmb_sample_conditioned_count(
-              back_accept[j][nj&1], j, nj&1, nj_min, count_u);
+          int nj_back = sepmb_sample_conditioned_count_lowmem(
+              j, jump_probability, nj&1, nj_min,
+              back_accept_prb,
+              nj_min == back_parity
+                ? back_first_mass[j][back_parity] : -1.0L,
+              count_u);
           if(nj_back < 0) continue;
           bzero(jumps_back, Jmax*sizeof(int));
           if(sepmb_sample_jump_times_stratified(j, nj_back,
@@ -1310,7 +1384,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             ? (all_order_back_dp || exact_back_jumps > 0
               ? (all_order_back_dp
                 ? (recurrence_dense
-                ? "#PATCH_CHECK: SepMBpoisson v0.84 recurrence-aware measurement active\n"
+                ? "#PATCH_CHECK: SepMBpoisson v0.92 low-memory conditional-count active\n"
                   : "#PATCH_CHECK: SepMBpoisson v0.82 all-order-back-DP adaptive-B active\n")
                 : "#PATCH_CHECK: SepMBpoisson v0.81 continuous adaptive-time-sampler active\n")
               : "#PATCH_CHECK: SepMBpoisson v0.66 sampled-backward-orbital active\n")
@@ -1334,6 +1408,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fprintf(FL, "#recurrence measurement: enabled=%d vibrational_period=%1.16e half_width=%1.16e stride_steps=%d\n",
             recurrence_dense ? 1 : 0, vibrational_period,
             recurrence_half_width, recurrence_stride);
+    fprintf(FL, "#conditional-count memory: mode=linear-parity-cache parity_table_bytes=%1.0f dense_back_table_bytes=0 legacy_dense_bytes=%1.0f\n",
+            2.0*(sizeof(double)+sizeof(long double))*(nwf+1.0),
+            16.0*(nwf+1.0)*(nwf+2.0));
     double *rlt = array1d<double>(Norb+3);
     int il = 0;
     for(int t=0; t<=nwf; t++)  {
@@ -1369,7 +1446,26 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fclose(FL);
   }
 
-  free3d(back_accept);
+  struct rusage sepmb_usage;
+  long sepmb_peak_rss_kb = getrusage(RUSAGE_SELF, &sepmb_usage) == 0
+      ? sepmb_usage.ru_maxrss : -1;
+#ifdef _YYY_MPI_
+  long sepmb_max_peak_rss_kb = sepmb_peak_rss_kb;
+  MPI_Reduce(&sepmb_peak_rss_kb, &sepmb_max_peak_rss_kb, 1, MPI_LONG,
+      MPI_MAX, master, MPI_COMM_WORLD);
+  if(myid == master) {
+    printf("#SEP_MB_RESOURCE max_rank_peak_rss_kb=%ld ranks=%d\n",
+           sepmb_max_peak_rss_kb, nproc);
+    fflush(stdout);
+  }
+#else
+  printf("#SEP_MB_RESOURCE max_rank_peak_rss_kb=%ld ranks=1\n",
+         sepmb_peak_rss_kb);
+  fflush(stdout);
+#endif
+
+  free2d(back_first_mass);
+  free2d(back_accept_parity);
   free2d(prb);
   free1d(measure_slot);
   free1d(sclf);
