@@ -17,6 +17,38 @@
 
 namespace {
 
+void sepmb_report_peak_rss() {
+  struct rusage usage;
+  long peak_rss_kb = getrusage(RUSAGE_SELF, &usage) == 0
+      ? usage.ru_maxrss : -1;
+#ifdef _YYY_MPI_
+  long max_peak_rss_kb = peak_rss_kb;
+  MPI_Reduce(&peak_rss_kb, &max_peak_rss_kb, 1, MPI_LONG,
+      MPI_MAX, master, MPI_COMM_WORLD);
+  if(myid == master) {
+    printf("#SEP_MB_RESOURCE max_rank_peak_rss_kb=%ld ranks=%d\n",
+           max_peak_rss_kb, nproc);
+    fflush(stdout);
+  }
+#else
+  printf("#SEP_MB_RESOURCE max_rank_peak_rss_kb=%ld ranks=1\n",
+         peak_rss_kb);
+  fflush(stdout);
+#endif
+}
+
+dcomplex sepmb_integer_phase(dcomplex **powers, const int state,
+    int exponent) {
+  dcomplex result = 1.0;
+  int bit = 0;
+  while(exponent > 0) {
+    if(exponent&1) result *= powers[bit][state];
+    exponent >>= 1;
+    bit++;
+  }
+  return result;
+}
+
 double sepmb_binom(const int n, const int k) {
   if(k < 0 || k > n) return 0.0;
   int kk = k < n-k ? k : n-k;
@@ -436,7 +468,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_recurrence_half_width = getenv("SEP_MB_RECURRENCE_HALF_WIDTH"),
              *env_recurrence_stride = getenv("SEP_MB_RECURRENCE_STRIDE"),
              *env_deterministic_fock = getenv("SEP_MB_DETERMINISTIC_FOCK"),
-             *env_fock_states = getenv("SEP_MB_FOCK_STATES");
+             *env_fock_states = getenv("SEP_MB_FOCK_STATES"),
+             *env_auto_fock_max_mib = getenv("SEP_MB_AUTO_FOCK_MAX_MIB");
   double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
   int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
   if(env_nwf) nwf = atoi(env_nwf);
@@ -470,11 +503,27 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       ? atoi(env_all_order_back_dp) != 0 : true;
   const bool recurrence_dense = env_recurrence_dense
       ? atoi(env_recurrence_dense) != 0 : true;
-  const bool deterministic_fock = env_deterministic_fock
-      ? atoi(env_deterministic_fock) != 0 : true;
+  const int deterministic_fock_mode = env_deterministic_fock
+      ? atoi(env_deterministic_fock) : 1;
   int fock_states = env_fock_states ? atoi(env_fock_states) : 384;
   if(fock_states < 16) fock_states = 16;
   if(fock_states > 512) fock_states = 512;
+  double auto_fock_max_mib = env_auto_fock_max_mib
+      ? atof(env_auto_fock_max_mib) : 256.0;
+  if(auto_fock_max_mib < 1.0) auto_fock_max_mib = 1.0;
+  const long double estimated_fock_bytes =
+      3.0L*Nhs*fock_states*sizeof(dcomplex);
+  const bool deterministic_fock = deterministic_fock_mode < 0
+      ? estimated_fock_bytes <= auto_fock_max_mib*1024.0L*1024.0L
+      : deterministic_fock_mode > 0;
+  if(myid == master) {
+    printf("#SEP_MB_ALGORITHM fock_mode=%d selected=%s fock_states=%d estimated_fock_work_mib=%1.6Lf auto_fock_max_mib=%1.6f\n",
+           deterministic_fock_mode,
+           deterministic_fock ? "deterministic-fock" : "stochastic-poisson",
+           fock_states, estimated_fock_bytes/(1024.0L*1024.0L),
+           auto_fock_max_mib);
+    fflush(stdout);
+  }
   const double vibrational_period = freq > 0.0
       ? 2.0*acos(-1.0)/freq : 0.0;
   double recurrence_half_width = env_recurrence_half_width
@@ -598,7 +647,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       char fnm[256];
       sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
       FILE *FL = fopen(fnm, "w");
-      fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.91 deterministic-Fock-resummation active\n");
+      fprintf(FL, "#PATCH_CHECK: SepMBpoisson v0.93 adaptive-dispatch deterministic-Fock core active\n");
       fprintf(FL, "#discretizing the bath:\n");
       for(int n=0; n<Norb; n++) {
         fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
@@ -660,6 +709,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       free1d(hamiltonian_work);
       free1d(molecule_occupied);
     }
+    sepmb_report_peak_rss();
     return;
   }
 
@@ -742,14 +792,20 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       abort();
     }
 
-    dcomplex **expEoccdt = array2d<dcomplex>(nstep+1, Nhs),
+    int phase_bits = 1;
+    for(int span=1; span<nstep; span<<=1) phase_bits++;
+    dcomplex **expEocc_power = array2d<dcomplex>(phase_bits, Nhs),
              *vec_for    = array1d<dcomplex>(Nhs),
              *vec_back   = sample_back_orbitals ? NULL : array1d<dcomplex>(Nhs),
              *vec_tmp    = array1d<dcomplex>(Nhs);
     const int vec_bytes = sizeof(dcomplex)*Nhs;
-    for(int k=0; k<=nstep; k++) {
+    for(int s=0; s<Nhs; s++) {
+      expEocc_power[0][s] = exp(-I*(dt*Eocc[s]));
+    }
+    for(int bit=1; bit<phase_bits; bit++) {
       for(int s=0; s<Nhs; s++) {
-        expEoccdt[k][s] = exp(-I*(dt*Eocc[s]*(double)k));
+        expEocc_power[bit][s] = expEocc_power[bit-1][s]
+            *expEocc_power[bit-1][s];
       }
     }
 
@@ -856,7 +912,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           wgt_for *= exphwdt1;
           alp_for *= expfreqdt1;
         }
-        for(int s=0; s<Nhs; s++) vec_for[s] *= expEoccdt[1][s];
+        for(int s=0; s<Nhs; s++) vec_for[s] *= expEocc_power[0][s];
         jc[nj_for]++;
 
         const int iprb = j <= nwf ? measure_slot[j] : -1;
@@ -915,7 +971,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             }
             if(sparse_exact_back) {
               for(int s : sparse_active) {
-                sparse_back[s] *= expEoccdt[nadvance][s];
+                sparse_back[s] *= sepmb_integer_phase(
+                    expEocc_power, s, nadvance);
               }
               sparse_next_active.clear();
               sparse_generation++;
@@ -938,7 +995,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               sparse_next = swap_buffer;
               sparse_active.swap(sparse_next_active);
             } else if(sample_back_orbitals) {
-              orbital_back_weight *= expEoccdt[nadvance][back_basis];
+              orbital_back_weight *= sepmb_integer_phase(
+                  expEocc_power, back_basis, nadvance);
               const int degree = back_orbital_targets[back_basis].size();
               if(degree <= 0) {
                 cerr<<"sampled backward determinant has no jump target.\n";
@@ -950,7 +1008,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               back_basis = back_orbital_targets[back_basis][choice];
             } else {
               for(int s=0; s<Nhs; s++) {
-                vec_back[s] *= expEoccdt[nadvance][s];
+                vec_back[s] *= sepmb_integer_phase(
+                    expEocc_power, s, nadvance);
               }
               bzero(vec_tmp, vec_bytes);
               exc.multiply(vec_back, vec_tmp);
@@ -974,13 +1033,16 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           }
           if(sparse_exact_back) {
             for(int s : sparse_active) {
-              sparse_back[s] *= expEoccdt[nadvance][s];
+              sparse_back[s] *= sepmb_integer_phase(
+                  expEocc_power, s, nadvance);
             }
           } else if(sample_back_orbitals) {
-            orbital_back_weight *= expEoccdt[nadvance][back_basis];
+            orbital_back_weight *= sepmb_integer_phase(
+                expEocc_power, back_basis, nadvance);
           } else {
             for(int s=0; s<Nhs; s++) {
-              vec_back[s] *= expEoccdt[nadvance][s];
+              vec_back[s] *= sepmb_integer_phase(
+                  expEocc_power, s, nadvance);
             }
           }
 
@@ -1020,7 +1082,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       }
     }
 
-    free2d(expEoccdt);
+    free2d(expEocc_power);
     free1d(vec_for);
     if(vec_back) free1d(vec_back);
     if(sparse_back) free1d(sparse_back);
@@ -1411,6 +1473,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fprintf(FL, "#conditional-count memory: mode=linear-parity-cache parity_table_bytes=%1.0f dense_back_table_bytes=0 legacy_dense_bytes=%1.0f\n",
             2.0*(sizeof(double)+sizeof(long double))*(nwf+1.0),
             16.0*(nwf+1.0)*(nwf+2.0));
+    const int phase_memory_bits = nstep > 1
+        ? 1+(int)ceil(log((double)nstep)/log(2.0)) : 1;
+    fprintf(FL, "#electronic-phase memory: mode=binary-power-table phase_table_bytes=%1.0f phase_bits=%d legacy_time_state_table_bytes=%1.0f\n",
+            1.0*sizeof(dcomplex)*Nhs*phase_memory_bits,
+            phase_memory_bits,
+            1.0*sizeof(dcomplex)*(nstep+1.0)*Nhs);
     double *rlt = array1d<double>(Norb+3);
     int il = 0;
     for(int t=0; t<=nwf; t++)  {
@@ -1446,23 +1514,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fclose(FL);
   }
 
-  struct rusage sepmb_usage;
-  long sepmb_peak_rss_kb = getrusage(RUSAGE_SELF, &sepmb_usage) == 0
-      ? sepmb_usage.ru_maxrss : -1;
-#ifdef _YYY_MPI_
-  long sepmb_max_peak_rss_kb = sepmb_peak_rss_kb;
-  MPI_Reduce(&sepmb_peak_rss_kb, &sepmb_max_peak_rss_kb, 1, MPI_LONG,
-      MPI_MAX, master, MPI_COMM_WORLD);
-  if(myid == master) {
-    printf("#SEP_MB_RESOURCE max_rank_peak_rss_kb=%ld ranks=%d\n",
-           sepmb_max_peak_rss_kb, nproc);
-    fflush(stdout);
-  }
-#else
-  printf("#SEP_MB_RESOURCE max_rank_peak_rss_kb=%ld ranks=1\n",
-         sepmb_peak_rss_kb);
-  fflush(stdout);
-#endif
+  sepmb_report_peak_rss();
 
   free2d(back_first_mass);
   free2d(back_accept_parity);
