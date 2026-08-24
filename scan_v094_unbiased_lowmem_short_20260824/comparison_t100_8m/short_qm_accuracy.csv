@@ -1,0 +1,2 @@
+label,path,n_points,tmax,qm_signal_rms,simulation_signal_rms,error_rms,Q_qm,Q_qm_first_half,Q_qm_second_half,Q_qm_min_half,amplitude_ratio,cosine_similarity,max_abs_occupation_error,max_particle_error
+hybrid8m,E:\project_qm\scan_v094_unbiased_lowmem_short_20260824\cloud-runs\646536\ahm-sepmb-s10-n5-8000000.dat,201,100.0,1.5890556750241992e-07,1.580087539078104e-07,1.7982247033744556e-08,8.836802608941248,11.519036464653995,7.240737471283513,7.240737471283513,0.9943563110550179,0.9935767307877147,4.787075653656103e-07,2.5133282122169476e-09

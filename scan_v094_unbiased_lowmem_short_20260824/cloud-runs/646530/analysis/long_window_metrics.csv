@@ -1,0 +1,2 @@
+window_start,window_stop,n_points,Q_active,min_active_orbital_Q,signal_rms_active,error_rms_active,amplitude_ratio_active,cosine_active,max_particle_error,target_Q,trajectory_multiplier_for_target,projected_ntraj_for_target
+0.0,25.0,51,16.082926147129264,15.20339179535973,2.2774375814264855e-07,1.4160592174534103e-08,1.0150880991906641,0.9982078301311927,4.021787347596728e-10,10.0,0.3866071348295629,38660.713482956286

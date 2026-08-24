@@ -1,0 +1,33 @@
+{
+  "qm": "E:\\project_qm\\scan_v093_poisson_t2500_20260822\\pilots\\qm_646419_eta03\\ahm-qm-s10-n5.dat",
+  "simulation": "E:\\project_qm\\scan_v094_unbiased_lowmem_short_20260824\\cloud-runs\\646529\\ahm-sepmb-s10-n5-100000.dat",
+  "tmax": 25.0,
+  "dt": 0.5,
+  "n_points": 51,
+  "active_orbitals": [
+    0,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "minimum_Q_active": 16.47746125955035,
+  "windows": [
+    {
+      "window_start": 0.0,
+      "window_stop": 25.0,
+      "n_points": 51,
+      "Q_active": 16.47746125955035,
+      "min_active_orbital_Q": 15.760025824004098,
+      "signal_rms_active": 2.2774375814264855e-07,
+      "error_rms_active": 1.3821532003945576e-08,
+      "amplitude_ratio_active": 1.0097854261288812,
+      "cosine_active": 0.9982236843084612,
+      "max_particle_error": 4.021831756517713e-10,
+      "target_Q": 10.0,
+      "trajectory_multiplier_for_target": 0.36831499595632494,
+      "projected_ntraj_for_target": 36831.49959563249
+    }
+  ]
+}
