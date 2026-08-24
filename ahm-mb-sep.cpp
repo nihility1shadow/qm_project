@@ -48,6 +48,18 @@ dcomplex sepmb_integer_phase(dcomplex **powers, const int state,
   }
   return result;
 }
+int sepmb_stratified_set_element(const set<int>& values, const double u) {
+  if(values.empty()) return -1;
+  const int count = (int)values.size();
+  int choice = (int)(u*count);
+  if(choice < 0) choice = 0;
+  if(choice >= count) choice = count-1;
+  set<int>::const_iterator it = values.begin();
+  for(int k=0; k<choice; k++) ++it;
+  return *it;
+}
+
+
 
 double sepmb_binom(const int n, const int k) {
   if(k < 0 || k > n) return 0.0;
@@ -458,6 +470,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_back_replicas = getenv("SEP_MB_BACK_REPLICAS"),
              *env_back_replicas_min = getenv("SEP_MB_BACK_REPLICAS_MIN"),
              *env_back_replica_power = getenv("SEP_MB_BACK_REPLICA_POWER"),
+             *env_rate_scale = getenv("SEP_MB_RATE_SCALE"),
+             *env_stratify_forward_orbitals = getenv("SEP_MB_STRATIFY_FORWARD_ORBITALS"),
              *env_stratify_forward = getenv("SEP_MB_STRATIFY_FORWARD_COUNT"),
              *env_exact_orbitals = getenv("SEP_MB_EXACT_ORBITALS"),
              *env_stratify_single_jump = getenv("SEP_MB_STRATIFY_SINGLE_JUMP_TIME"),
@@ -488,10 +502,17 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       ? atof(env_back_replica_power) : 2.0;
   if(back_replica_power < 0.1) back_replica_power = 0.1;
   if(back_replica_power > 8.0) back_replica_power = 8.0;
+  double rate_scale = env_rate_scale ? atof(env_rate_scale) : 1.0;
+  if(rate_scale < 0.05) rate_scale = 0.05;
+  if(rate_scale > 256.0) rate_scale = 256.0;
+  const double inv_rate_scale = 1.0/rate_scale;
   const bool stratify_forward = env_stratify_forward
       ? atoi(env_stratify_forward) != 0 : true;
   const bool exact_orbitals = env_exact_orbitals
       ? atoi(env_exact_orbitals) != 0 : true;
+  const bool stratify_forward_orbitals = !exact_orbitals &&
+      (env_stratify_forward_orbitals
+       ? atoi(env_stratify_forward_orbitals) != 0 : false);
   const bool stratify_single_jump = env_stratify_single_jump
       ? atoi(env_stratify_single_jump) != 0 : true;
   const bool sample_back_orbitals = env_sample_back_orbitals
@@ -721,13 +742,18 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       Jmax     = nstep + 1;
   csproj(wgt_init*Lfct, alp_init, wgt_init, alp_init, excited0, S0, prb[0]);
 
+  // Changing the Poisson rate only changes variance. Each sampled jump is
+  // compensated by inv_rate_scale so the expected propagator is unchanged.
   const double lambda          = abs(cpl[1]),
-               jump_strength   = sqrtNel*sqrtNvac*lambda*dt,
+               physical_jump_rate = sqrtNel*sqrtNvac*lambda,
+               sampling_jump_rate = rate_scale*physical_jump_rate,
+               jump_strength   = sampling_jump_rate*dt,
                jump_probability = jump_strength/(1.0+jump_strength),
                log_scale       = log1p(jump_strength),
-               inv_jump_normalization = 1.0/(lambda*sqrtNel*sqrtNvac);
+               inv_jump_normalization = 1.0/sampling_jump_rate;
   double p0, pt,  inv_ntraj = 1.0/ntraj,
-          *sclf       = array1d<double>(nstep+1);
+          *sclf       = array1d<double>(nstep+1),
+          *forward_orbital_shift = stratify_forward_orbitals ? array1d<double>(Jmax) : NULL;
   int    *jumps_back = array1d<int>(Jmax),
          *jumps_forward = array1d<int>(Jmax),
          *forward_jump_schedule = array1d<int>(Jmax),
@@ -745,6 +771,15 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     forward_count_shift = drand48();
 #endif
   }
+  if(stratify_forward_orbitals) {
+#ifdef _YYY_MPI_
+    if(myid == master) for(int k=0; k<Jmax; k++) forward_orbital_shift[k] = drand48();
+    MPI_Bcast(forward_orbital_shift, Jmax, MPI_DOUBLE, master, MPI_COMM_WORLD);
+#else
+    for(int k=0; k<Jmax; k++) forward_orbital_shift[k] = drand48();
+#endif
+  }
+
   unsigned long long forward_time_shift = 0,
                      backward_time_shift = 0;
   if(stratify_single_jump) {
@@ -844,7 +879,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             }
             back_orbital_targets[s].push_back(target);
             back_orbital_factors[s].push_back(
-                eo[position&1]*sqrtNvac*sqrt1_Nel);
+                eo[position&1]*sqrtNvac*sqrt1_Nel*inv_rate_scale);
           }
         } else {
           for(int k=0; k<Nel; k++) {
@@ -860,7 +895,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             }
             back_orbital_targets[s].push_back(target);
             back_orbital_factors[s].push_back(
-                eo[k&1]*sqrtNel*sqrt1_Nvac);
+                eo[k&1]*sqrtNel*sqrt1_Nvac*inv_rate_scale);
           }
         }
       }
@@ -1113,11 +1148,22 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         nj      = 0,        //number of jumps in the forward  path;
         sign, found;
 
+    double forward_orbital_base_u =
+        ((double)(trajectory_offset+n)+0.5)/ntraj;
     if(stratify_forward) {
       bzero(forward_jump_schedule, Jmax*sizeof(int));
       const double count_u = fmod(forward_count_shift +
           (trajectory_offset+n)*1.0/ntraj, 1.0);
       const int nj_forward = sepmb_sample_cdf(forward_count_cdf, count_u);
+      if(stratify_forward_orbitals) {
+        const double sector_lower = nj_forward > 0
+            ? forward_count_cdf[nj_forward-1] : 0.0,
+                     sector_width = forward_count_cdf[nj_forward]-sector_lower;
+        if(sector_width > 0.0) {
+          forward_orbital_base_u = (count_u-sector_lower)/sector_width;
+          if(forward_orbital_base_u >= 1.0) forward_orbital_base_u = 1.0-1.e-15;
+        }
+      }
       if(sepmb_sample_jump_times_stratified(nstep, nj_forward,
             (unsigned long long)(trajectory_offset+n), forward_time_shift,
             stratify_single_jump, jumps_forward) != nj_forward) {
@@ -1151,7 +1197,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             cerr<<"empty vacant set in excited SepMB jump.\n";
             abort();
           }
-          idx = get_random_element(vac);
+          idx = stratify_forward_orbitals
+              ? sepmb_stratified_set_element(vac, fmod(forward_orbital_shift[nj]
+                    +forward_orbital_base_u, 1.0))
+              : get_random_element(vac);
           if(idx < 0 || idx >= Norb) {
             cerr<<"invalid vacant orbital sampled in SepMB jump.\n";
             abort();
@@ -1174,14 +1223,17 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 #ifdef _TRACE_STATE_
           printf("  forward %2d-th jump : sign = %+d, switch 0 -> %4d : \n", nj, sign, idx);
 #endif
-          wgt *= sign*sqrtNvac*sqrt1_Nel;
+          wgt *= sign*sqrtNvac*sqrt1_Nel*inv_rate_scale;
         } else {
           // if the molecule is not excited, the electron jumps from an occupied orbital to the molecule
           if(state.empty()) {
             cerr<<"empty occupied set in ground SepMB jump.\n";
             abort();
           }
-          idx  = get_random_element(state);
+          idx = stratify_forward_orbitals
+              ? sepmb_stratified_set_element(state, fmod(forward_orbital_shift[nj]
+                    +forward_orbital_base_u, 1.0))
+              : get_random_element(state);
           if(idx <= 0 || idx >= Norb) {
             cerr<<"invalid occupied orbital sampled in SepMB jump.\n";
             abort();
@@ -1194,7 +1246,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             abort();
           }
           sign = eo[pos%2];
-          wgt *= sign*sqrtNel*sqrt1_Nvac;
+          wgt *= sign*sqrtNel*sqrt1_Nvac*inv_rate_scale;
 #ifdef _TRACE_STATE_
           printf("  forward %2d-th jump : sign = %+d, switch 0 <- %4d : \n", nj, sign, idx);
 #endif
@@ -1366,7 +1418,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             printf("     sign = %+d, switch %4d <-> %4d : \n",
                    sign, path[k].first, path[k].second);
 #endif
-            wgt *= sign*sqrtfct[excited];
+            wgt *= sign*sqrtfct[excited]*inv_rate_scale;
             excited = 1-excited;
           }
 
@@ -1453,12 +1505,14 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             : (stratify_single_jump
               ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
               : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
-        : "#PATCH_CHECK: SepMBpoisson v0.61 exact-bernoulli stratified-backward active\n");
+        : "#PATCH_CHECK: SepMBpoisson v0.96 stratified-label pathwise active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
-    fprintf(FL, "#sampling: jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
+    fprintf(FL, "#sampling: physical_jump_rate=%1.16e sampling_jump_rate=%1.16e rate_scale=%1.16e jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d stratify_forward_orbitals=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
+            physical_jump_rate, sampling_jump_rate, rate_scale,
             jump_strength, jump_probability, log_scale, back_replicas,
-            stratify_forward ? 1 : 0, exact_orbitals ? 1 : 0,
+            stratify_forward ? 1 : 0, stratify_forward_orbitals ? 1 : 0,
+            exact_orbitals ? 1 : 0,
             stratify_single_jump ? 1 : 0,
             sample_back_orbitals ? 1 : 0,
             exact_back_jumps);
@@ -1524,6 +1578,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   free1d(jumps_back);
   free1d(jumps_forward);
   free1d(forward_jump_schedule);
+  if(forward_orbital_shift) free1d(forward_orbital_shift);
   free1d(jc);
 
 	return;
