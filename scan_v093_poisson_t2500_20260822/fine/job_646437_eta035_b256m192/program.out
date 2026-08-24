@@ -1,0 +1,3 @@
+#AHAU_MPI nproc=64 seed_base=2500823 wc_eV=2.7000000000000002e+00 eta=3.4999999999999998e-07 delE_eV=-1.7194874968839816e+01 nstep=5000 dt=0.5
+#SEP_MB_ALGORITHM fock_mode=0 selected=stochastic-poisson fock_states=384 estimated_fock_work_mib=4.429688 auto_fock_max_mib=256.000000
+#SEP_MB_RESOURCE max_rank_peak_rss_kb=12776 ranks=64
