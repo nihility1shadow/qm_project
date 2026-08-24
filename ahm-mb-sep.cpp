@@ -11,6 +11,7 @@
 #include "./Kondo-path-sampler.h"
 #include <cmath>
 #include <cstdlib>
+#include <map>
 #include <sys/resource.h>
 
 #define _YYY_REALSPACE_AV_
@@ -97,6 +98,16 @@ int sepmb_diff_size_no_zero(const set<int>& a, const set<int>& b) {
   for(int orbital : a)
     if(orbital != 0 && b.find(orbital) == b.end()) count++;
   return count;
+}
+
+int sepmb_kondo_distance_from_initial(const set<int>& initial,
+    const set<int>& current) {
+  const int class_flip =
+      (initial.find(0) != initial.end()) ^ (current.find(0) != current.end());
+  int added = 0;
+  for(int orbital : current)
+    if(initial.find(orbital) == initial.end()) added++;
+  return added-class_flip;
 }
 
 double sepmb_kondo_endpoint_probability(KondoPathSampler& sampler,
@@ -378,6 +389,64 @@ struct SepmbFockContext {
   double energy_origin;
   dcomplex *hamiltonian_work;
 };
+struct SepmbReferenceContext {
+  int nstate;
+  int nfock;
+  const vector<vector<pair<int, dcomplex> > > *transitions;
+  const double *electronic_energy;
+  const int *molecule_occupied;
+  double frequency;
+  double half_displacement;
+  double constant_shift;
+  double energy_origin;
+  dcomplex *hamiltonian_work;
+};
+
+void sepmb_reference_rhs(const int dimension, const double,
+    const double accumulator_factor, const double derivative_factor,
+    void *parameters,
+    dcomplex *const state, dcomplex *derivative) {
+  SepmbReferenceContext *context = (SepmbReferenceContext *)parameters;
+  const int nstate = context->nstate,
+            nfock = context->nfock;
+  if(dimension != nstate*nfock) abort();
+  dcomplex *hpsi = context->hamiltonian_work;
+  bzero(hpsi, dimension*sizeof(dcomplex));
+
+  for(int n=0; n<nfock; n++) {
+    const int base = n*nstate;
+    for(int source=0; source<nstate; source++) {
+      const dcomplex amplitude = state[base+source];
+      if(abs(amplitude) <= 1.e-300) continue;
+      for(const pair<int, dcomplex>& edge :
+          (*context->transitions)[source]) {
+        hpsi[base+edge.first] += edge.second*amplitude;
+      }
+    }
+  }
+  for(int n=0; n<nfock; n++) {
+    const double root_down = n > 0 ? sqrt((double)n) : 0.0,
+                 root_up = n+1 < nfock ? sqrt((double)(n+1)) : 0.0;
+    for(int s=0; s<nstate; s++) {
+      const int index = n*nstate+s;
+      const double diagonal = context->electronic_energy[s]
+          +context->frequency*(n+0.5)+context->constant_shift
+          -context->energy_origin;
+      const double linear = context->molecule_occupied[s]
+          ? -context->frequency*context->half_displacement
+          : context->frequency*context->half_displacement;
+      dcomplex value = hpsi[index]+diagonal*state[index];
+      if(n > 0) value += linear*root_down*state[(n-1)*nstate+s];
+      if(n+1 < nfock) value += linear*root_up*state[(n+1)*nstate+s];
+      hpsi[index] = value;
+    }
+  }
+  for(int index=0; index<dimension; index++) {
+    derivative[index] = accumulator_factor*derivative[index]
+        -I*derivative_factor*hpsi[index];
+  }
+}
+
 
 void sepmb_fock_rhs(const int dimension, const double,
     const double accumulator_factor, const double derivative_factor,
@@ -636,6 +705,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_recurrence_stride = getenv("SEP_MB_RECURRENCE_STRIDE"),
              *env_deterministic_fock = getenv("SEP_MB_DETERMINISTIC_FOCK"),
              *env_fock_states = getenv("SEP_MB_FOCK_STATES"),
+             *env_reference_distance = getenv("SEP_MB_REFERENCE_DISTANCE"),
+             *env_reference_fock_states = getenv("SEP_MB_REFERENCE_FOCK_STATES"),
+             *env_reference_max_states = getenv("SEP_MB_REFERENCE_MAX_STATES"),
              *env_auto_fock_max_mib = getenv("SEP_MB_AUTO_FOCK_MAX_MIB");
   double output_tmax = env_tmax ? atof(env_tmax) : 500.0;
   int nwf = output_tmax > 0.0 ? (int)(output_tmax/dt + 0.5) : 1000;
@@ -688,6 +760,18 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   int fock_states = env_fock_states ? atoi(env_fock_states) : 384;
   if(fock_states < 16) fock_states = 16;
   if(fock_states > 512) fock_states = 512;
+  int reference_distance = env_reference_distance
+      ? atoi(env_reference_distance) : -1;
+  if(reference_distance < -1) reference_distance = -1;
+  if(reference_distance > 4) reference_distance = 4;
+  const int requested_reference_distance = reference_distance;
+  int reference_fock_states = env_reference_fock_states
+      ? atoi(env_reference_fock_states) : fock_states;
+  if(reference_fock_states < 16) reference_fock_states = 16;
+  if(reference_fock_states > 512) reference_fock_states = 512;
+  int reference_max_states = env_reference_max_states
+      ? atoi(env_reference_max_states) : 4096;
+  if(reference_max_states < 1) reference_max_states = 1;
   double auto_fock_max_mib = env_auto_fock_max_mib
       ? atof(env_auto_fock_max_mib) : 256.0;
   if(auto_fock_max_mib < 1.0) auto_fock_max_mib = 1.0;
@@ -900,6 +984,194 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   int excited0 = S0.find(0) == S0.end() ? 0 : 1,
       Jmax     = nstep + 1;
   csproj(wgt_init*Lfct, alp_init, wgt_init, alp_init, excited0, S0, prb[0]);
+  vector<set<int> > reference_states;
+  while(reference_distance >= 0) {
+    reference_states.clear();
+    for(int s=0; s<Nhs; s++) {
+      set<int> basis_state;
+      for(int k=0; k<Nel; k++) basis_state.insert(occ[s][k]);
+      const int distance =
+          sepmb_kondo_distance_from_initial(S0, basis_state);
+      if(distance >= 0 && distance <= reference_distance) {
+        reference_states.push_back(basis_state);
+      }
+    }
+    if((int)reference_states.size() <= reference_max_states) break;
+    reference_distance--;
+  }
+  if(reference_distance < 0) reference_states.clear();
+  const int reference_state_count = (int)reference_states.size();
+  const bool reference_control = !deterministic_fock &&
+      reference_distance >= 0 && reference_state_count > 0 &&
+      reference_state_count <= reference_max_states;
+  double **reference_prb = reference_control && myid==master
+      ? array2d<double>(nwf+1, Norb+3) : NULL;
+
+  if(myid==master) {
+    const long double reference_work_bytes = 3.0L*reference_state_count*
+        reference_fock_states*sizeof(dcomplex);
+    printf("#SEP_MB_REFERENCE requested_distance=%d selected_distance=%d active=%d states=%d max_states=%d fock_states=%d estimated_work_mib=%1.6Lf\n",
+           requested_reference_distance, reference_distance,
+           reference_control ? 1 : 0, reference_state_count,
+           reference_max_states,
+           reference_fock_states,
+           reference_work_bytes/(1024.0L*1024.0L));
+    fflush(stdout);
+    if(requested_reference_distance >= 0 && !reference_control) {
+      printf("#SEP_MB_REFERENCE disabled because no depth fits max_states\n");
+      fflush(stdout);
+    }
+  }
+
+  if(reference_control && myid==master) {
+    map<set<int>, int> reference_index;
+    for(int s=0; s<reference_state_count; s++) {
+      reference_index[reference_states[s]] = s;
+    }
+    const map<set<int>, int>::const_iterator initial_position =
+        reference_index.find(S0);
+    if(initial_position == reference_index.end()) {
+      cerr<<"failed to locate the initial determinant in reference subspace.\n";
+      abort();
+    }
+    const int reference_initial = initial_position->second;
+    vector<vector<pair<int, dcomplex> > > reference_transitions(
+        reference_state_count);
+    double *reference_energy = array1d<double>(reference_state_count);
+    int *reference_molecule_occupied =
+        array1d<int>(reference_state_count);
+
+    for(int source=0; source<reference_state_count; source++) {
+      const set<int>& basis_state = reference_states[source];
+      reference_molecule_occupied[source] =
+          basis_state.find(0) != basis_state.end();
+      for(int orbital : basis_state) {
+        reference_energy[source] += En[orbital];
+      }
+
+      if(reference_molecule_occupied[source]) {
+        for(int orbital=1; orbital<Norb; orbital++) {
+          if(basis_state.find(orbital) != basis_state.end()) continue;
+          set<int> target_state = basis_state;
+          target_state.erase(0);
+          target_state.insert(orbital);
+          const map<set<int>, int>::const_iterator target =
+              reference_index.find(target_state);
+          if(target == reference_index.end()) continue;
+          int position = 0;
+          set<int>::const_iterator occupied = target_state.begin();
+          for(; occupied != target_state.end() && *occupied != orbital;
+              ++occupied, ++position) {}
+          if(occupied == target_state.end()) abort();
+          reference_transitions[source].push_back(
+              make_pair(target->second, eo[position%2]*cpl[orbital]));
+        }
+      } else {
+        for(int orbital : basis_state) {
+          if(orbital == 0) continue;
+          int position = 0;
+          set<int>::const_iterator occupied = basis_state.begin();
+          for(; occupied != basis_state.end() && *occupied != orbital;
+              ++occupied, ++position) {}
+          if(occupied == basis_state.end()) abort();
+          set<int> target_state = basis_state;
+          target_state.erase(orbital);
+          target_state.insert(0);
+          const map<set<int>, int>::const_iterator target =
+              reference_index.find(target_state);
+          if(target == reference_index.end()) continue;
+          reference_transitions[source].push_back(
+              make_pair(target->second, eo[position%2]*cpl[orbital]));
+        }
+      }
+    }
+
+    const double displacement = sqrt(0.5*mass*freq)*delx,
+                 half_displacement = 0.5*displacement,
+                 constant_shift = 0.25*freq*displacement*displacement,
+                 coordinate_factor = sqrt(1.0/(2.0*mass*freq));
+    const dcomplex centered_alpha = alp_init-half_displacement;
+    const int reference_dimension =
+        reference_state_count*reference_fock_states;
+    dcomplex *reference_wavefunction =
+                 array1d<dcomplex>(reference_dimension),
+             *reference_work = array1d<dcomplex>(reference_dimension),
+             *reference_hamiltonian_work =
+                 array1d<dcomplex>(reference_dimension);
+    dcomplex coefficient =
+        wgt_init*exp(-0.5*norm(centered_alpha));
+    reference_wavefunction[reference_initial] = coefficient;
+    for(int n=1; n<reference_fock_states; n++) {
+      coefficient *= centered_alpha/sqrt((double)n);
+      reference_wavefunction[n*reference_state_count+reference_initial] =
+          coefficient;
+    }
+
+    SepmbReferenceContext reference_context;
+    reference_context.nstate = reference_state_count;
+    reference_context.nfock = reference_fock_states;
+    reference_context.transitions = &reference_transitions;
+    reference_context.electronic_energy = reference_energy;
+    reference_context.molecule_occupied =
+        reference_molecule_occupied;
+    reference_context.frequency = freq;
+    reference_context.half_displacement = half_displacement;
+    reference_context.constant_shift = constant_shift;
+    reference_context.energy_origin =
+        reference_energy[reference_initial]+0.5*freq;
+    reference_context.hamiltonian_work =
+        reference_hamiltonian_work;
+
+    for(int step=0; step<=nwf; step++) {
+      {
+        double reference_norm = 0.0,
+               coordinate_ladder = 0.0,
+               vibration_energy = 0.0;
+        for(int s=0; s<reference_state_count; s++) {
+          double determinant_probability = 0.0;
+          const double linear = reference_molecule_occupied[s]
+              ? -freq*half_displacement : freq*half_displacement;
+          for(int n=0; n<reference_fock_states; n++) {
+            const int index = n*reference_state_count+s;
+            const double probability =
+                norm(reference_wavefunction[index]);
+            determinant_probability += probability;
+            vibration_energy +=
+                (freq*(n+0.5)+constant_shift)*probability;
+            if(n+1 < reference_fock_states) {
+              const double ladder = 2.0*sqrt((double)(n+1))*real(
+                  conj(reference_wavefunction[index])*
+                  reference_wavefunction[(n+1)*reference_state_count+s]);
+              coordinate_ladder += ladder;
+              vibration_energy += linear*ladder;
+            }
+          }
+          reference_norm += determinant_probability;
+          for(int orbital : reference_states[s]) {
+            reference_prb[step][3+orbital] +=
+                determinant_probability;
+          }
+        }
+        reference_prb[step][0] = Nel*reference_norm;
+        reference_prb[step][1] =
+            0.5*delx*reference_norm+
+            coordinate_factor*coordinate_ladder;
+        reference_prb[step][2] = vibration_energy;
+      }
+      if(step < nwf) {
+        Clsrk8(reference_wavefunction, reference_work,
+               reference_dimension, step*dt, dt,
+               (void *)&reference_context, sepmb_reference_rhs);
+      }
+    }
+
+    free1d(reference_wavefunction);
+    free1d(reference_work);
+    free1d(reference_hamiltonian_work);
+    free1d(reference_energy);
+    free1d(reference_molecule_occupied);
+  }
+  if(reference_control) bzero(prb[0], (Norb+3)*sizeof(double));
 
   // Changing the Poisson rate only changes variance. Each sampled jump is
   // compensated by inv_rate_scale so the expected propagator is unchanged.
@@ -1345,6 +1617,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     int excited = excited0, //the index show the molecule is excited (1) or not (0)
         nj      = 0,        //number of jumps in the forward  path;
         sign, found;
+    bool forward_reference_path = reference_control;
 
     double forward_orbital_base_u =
         ((double)(trajectory_offset+n)+0.5)/ntraj;
@@ -1469,6 +1742,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           vac.erase(0);
           vac.insert(idx);
         }
+        if(forward_reference_path &&
+           sepmb_kondo_distance_from_initial(S0, state) >
+               reference_distance) {
+          forward_reference_path = false;
+        }
 #ifdef _CHECK_PATH_
         jumps_back[nj] = j;
 #endif
@@ -1587,7 +1865,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           wgt     = wgt_init;
           excited = excited0;
           state   = S0;
-          bool valid_path = ((int)path.size() == nj_back);
+          bool valid_path = ((int)path.size() == nj_back),
+               backward_reference_path = reference_control;
           for(int k=0; valid_path && k<nj_back; k++) {
             const int nadvance = jumps_back[k]-1-offset;
             if(excited) {
@@ -1634,6 +1913,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                 valid_path = false;
                 break;
               }
+            }
+            if(backward_reference_path &&
+               sepmb_kondo_distance_from_initial(S0, state) >
+                   reference_distance) {
+              backward_reference_path = false;
             }
             sign = eo[pos%2];
 #ifdef _TRACE_STATE_
@@ -1686,9 +1970,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           printf("alp : %+1.16e %+1.16e %+1.16e %+1.16e\n",
                  real(alp_for), imag(alp_for), real(alp), imag(alp));
 #endif
-          csproj(wgt_for*Iton[nj%4]*sclf[j]*inv_ntraj*inv_back_replicas_j,
-                 alp_for, wgt*Iton[nj_back%4]*measure, alp,
-                 excited, state, prb[iprb]);
+          if(!reference_control || !forward_reference_path ||
+             !backward_reference_path) {
+            csproj(wgt_for*Iton[nj%4]*sclf[j]*inv_ntraj*inv_back_replicas_j,
+                   alp_for, wgt*Iton[nj_back%4]*measure, alp,
+                   excited, state, prb[iprb]);
+          }
 
           alp = alp_for;
           wgt = wgt_for;
@@ -1728,7 +2015,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             : (stratify_single_jump
               ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
               : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
-        : "#PATCH_CHECK: SepMBpoisson v0.98 stratified-Kondo pathwise active\n");
+        : (reference_control
+          ? "#PATCH_CHECK: SepMBpoisson v0.99 low-order reference-control active\n"
+          : "#PATCH_CHECK: SepMBpoisson v0.98 stratified-Kondo pathwise active\n"));
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
     fprintf(FL, "#sampling: physical_jump_rate=%1.16e sampling_jump_rate=%1.16e rate_scale=%1.16e jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d stratify_forward_steps=%d stratify_forward_orbitals=%d stratify_back_paths=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
@@ -1740,6 +2029,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             stratify_single_jump ? 1 : 0,
             sample_back_orbitals ? 1 : 0,
             exact_back_jumps);
+    fprintf(FL, "#reference control: active=%d requested_distance=%d selected_distance=%d states=%d max_states=%d fock_states=%d\n",
+            reference_control ? 1 : 0, requested_reference_distance,
+            reference_distance,
+            reference_state_count, reference_max_states,
+            reference_fock_states);
     fprintf(FL, "#backward DP: all_order=%d replicas_min=%d replicas_max=%d replica_power=%1.8e replicas_per_forward=%lld\n",
             all_order_back_dp ? 1 : 0, back_replicas_min, back_replicas,
             back_replica_power, back_replicas_per_forward);
@@ -1771,6 +2065,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         for(int k=0; k<Norb+3; k++) rlt[k] = (1.0-f)*prb[il][k] + f*prb[ir][k];
       }
 
+      if(reference_control) {
+        for(int k=0; k<Norb+3; k++) rlt[k] += reference_prb[t][k];
+      }
       double norm = rlt[0]/Nel;
       if(fabs(norm) > 1.e-300) {
         fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e", t*dt, (double)Nel, rlt[1]/norm, rlt[2]/norm);
@@ -1797,6 +2094,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   free2d(back_first_mass);
   free2d(back_accept_parity);
   free2d(prb);
+  if(reference_prb) free2d(reference_prb);
   free1d(measure_slot);
   free1d(sclf);
   free1d(jumps_back);
