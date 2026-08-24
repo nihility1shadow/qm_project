@@ -25,6 +25,7 @@ def main() -> None:
     parser.add_argument("--label", required=True)
     parser.add_argument("--tmax", default=500.0, type=float)
     parser.add_argument("--norb", default=10, type=int)
+    parser.add_argument("--target-q", default=10.0, type=float)
     args = parser.parse_args()
 
     simulation = load_dat(args.simulation)
@@ -84,7 +85,10 @@ def main() -> None:
               label="aggregate active-orbital Q")
     axis.plot(x, individual, color="#d95f02", marker="s", linewidth=1.5,
               label="minimum individual active-orbital Q")
-    axis.axhline(10.0, color="black", linewidth=1.0, linestyle="--", label="Q=10")
+    axis.axhline(
+        args.target_q, color="black", linewidth=1.0, linestyle="--",
+        label=f"Q={args.target_q:g}",
+    )
     axis.set_xticks(x, labels, rotation=30, ha="right")
     axis.set_yscale("log")
     axis.set_xlabel("time window (a.u.)")
