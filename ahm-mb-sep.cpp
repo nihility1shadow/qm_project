@@ -59,6 +59,16 @@ int sepmb_stratified_set_element(const set<int>& values, const double u) {
   return *it;
 }
 
+unsigned long long sepmb_gcd_ull(unsigned long long a,
+    unsigned long long b) {
+  while(b != 0) {
+    const unsigned long long remainder = a%b;
+    a = b;
+    b = remainder;
+  }
+  return a;
+}
+
 
 
 double sepmb_binom(const int n, const int k) {
@@ -80,6 +90,116 @@ double sepmb_kondo_degeneracy(const int Norb, const int Nel,
   return (nj%2 == 0)
     ? sepmb_binom(Nel, d)*sepmb_binom(Nvac-1, d)
     : sepmb_binom(Nel, d+1)*sepmb_binom(Nvac-1, d);
+}
+
+int sepmb_diff_size_no_zero(const set<int>& a, const set<int>& b) {
+  int count = 0;
+  for(int orbital : a)
+    if(orbital != 0 && b.find(orbital) == b.end()) count++;
+  return count;
+}
+
+double sepmb_kondo_endpoint_probability(KondoPathSampler& sampler,
+    const set<int>& current, const set<int>& target, const int remaining,
+    const int Nel) {
+  if(remaining < 0 || current.size() != target.size() ||
+     (int)current.size() != Nel) return 0.0;
+
+  const bool current_A = current.find(0) != current.end(),
+             target_A = target.find(0) != target.end();
+  if(((remaining&1) == 0) != (current_A == target_A)) return 0.0;
+
+  const int current_only = sepmb_diff_size_no_zero(current, target),
+            target_only = sepmb_diff_size_no_zero(target, current);
+  int distance = -1;
+  if(current_A) {
+    if(target_A) {
+      if(current_only != target_only) return 0.0;
+      distance = current_only;
+    } else {
+      if(target_only != current_only+1) return 0.0;
+      distance = current_only;
+    }
+    return sampler.get_Ptd(remaining, distance);
+  }
+
+  if(target_A) {
+    if(current_only != target_only+1) return 0.0;
+    distance = target_only;
+  } else {
+    if(current_only != target_only) return 0.0;
+    distance = current_only;
+  }
+  return sampler.get_Qtd(remaining, distance);
+}
+
+int sepmb_sample_kondo_path_stratified(KondoPathSampler& sampler,
+    const int Norb, const int Nel, const int ksteps,
+    const set<int>& initial, const set<int>& target,
+    const double *uniforms, vector<pair<int, int> >& path) {
+  struct Candidate {
+    int first;
+    int second;
+    double weight;
+  };
+
+  path.clear();
+  if(ksteps < 0 || (int)initial.size() != Nel ||
+     (int)target.size() != Nel) return -1;
+  if(sepmb_kondo_endpoint_probability(
+       sampler, initial, target, ksteps, Nel) <= 0.0) return -2;
+
+  set<int> current = initial;
+  for(int remaining=ksteps; remaining>0; remaining--) {
+    vector<Candidate> candidates;
+    double total = 0.0;
+    if(current.find(0) != current.end()) {
+      for(int orbital=1; orbital<Norb; orbital++) {
+        if(current.find(orbital) != current.end()) continue;
+        set<int> next = current;
+        next.erase(0);
+        next.insert(orbital);
+        const double weight = sepmb_kondo_endpoint_probability(
+            sampler, next, target, remaining-1, Nel);
+        if(weight > 0.0) {
+          candidates.push_back({0, orbital, weight});
+          total += weight;
+        }
+      }
+    } else {
+      for(int orbital : current) {
+        if(orbital == 0) continue;
+        set<int> next = current;
+        next.erase(orbital);
+        next.insert(0);
+        const double weight = sepmb_kondo_endpoint_probability(
+            sampler, next, target, remaining-1, Nel);
+        if(weight > 0.0) {
+          candidates.push_back({orbital, 0, weight});
+          total += weight;
+        }
+      }
+    }
+    if(total <= 0.0 || candidates.empty()) return -3;
+
+    double unit = uniforms[ksteps-remaining];
+    if(unit < 0.0) unit = 0.0;
+    if(unit >= 1.0) unit = 1.0-1.e-15;
+    double threshold = unit*total;
+    const Candidate *choice = &candidates.back();
+    for(const Candidate& candidate : candidates) {
+      if(threshold < candidate.weight) {
+        choice = &candidate;
+        break;
+      }
+      threshold -= candidate.weight;
+    }
+
+    current.erase(choice->first);
+    current.insert(choice->second);
+    path.push_back({choice->first, choice->second});
+  }
+  return current == target ? 0 : -4;
 }
 
 long double sepmb_binomial_mass(const int n, const int k,
@@ -166,6 +286,37 @@ int sepmb_sample_conditioned_count_lowmem(const int nstep,
       failure_parity, failure_last, target, true, -1.0L);
 }
 
+
+double sepmb_conditioned_count_sector_u(const int nstep,
+    const double probability, const int parity, const int kmin,
+    const double accepted_probability, const int selected,
+    const double count_u) {
+  if(probability <= 0.0 || probability > 0.5 ||
+     accepted_probability <= 0.0) return count_u;
+
+  int first = kmin;
+  if((first&1) != parity) first++;
+  if(selected < first || selected > nstep ||
+     ((selected-first)&1)) return count_u;
+
+  long double target = (long double)count_u*accepted_probability,
+              mass = sepmb_binomial_mass(nstep, first, probability);
+  const long double odds2 = (long double)probability*probability/
+      ((1.0L-probability)*(1.0L-probability));
+  for(int count=first; count<selected; count+=2) {
+    target -= mass;
+    const long double numerator =
+        (long double)(nstep-count)*(nstep-count-1),
+        denominator = (long double)(count+1)*(count+2);
+    mass *= numerator*odds2/denominator;
+  }
+  if(mass <= 0.0L) return count_u;
+
+  double sector_u = (double)(target/mass);
+  if(sector_u < 0.0) sector_u = 0.0;
+  if(sector_u >= 1.0) sector_u = 1.0-1.e-15;
+  return sector_u;
+}
 int sepmb_sample_jump_times(const int nstep, const int njump, int *jumps) {
   if(njump < 0 || njump > nstep) return -1;
   if(njump == 0) return 0;
@@ -472,6 +623,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_back_replica_power = getenv("SEP_MB_BACK_REPLICA_POWER"),
              *env_rate_scale = getenv("SEP_MB_RATE_SCALE"),
              *env_stratify_forward_orbitals = getenv("SEP_MB_STRATIFY_FORWARD_ORBITALS"),
+             *env_stratify_forward_steps = getenv("SEP_MB_STRATIFY_FORWARD_STEPS"),
+             *env_stratify_back_paths = getenv("SEP_MB_STRATIFY_BACK_PATHS"),
              *env_stratify_forward = getenv("SEP_MB_STRATIFY_FORWARD_COUNT"),
              *env_exact_orbitals = getenv("SEP_MB_EXACT_ORBITALS"),
              *env_stratify_single_jump = getenv("SEP_MB_STRATIFY_SINGLE_JUMP_TIME"),
@@ -513,6 +666,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   const bool stratify_forward_orbitals = !exact_orbitals &&
       (env_stratify_forward_orbitals
        ? atoi(env_stratify_forward_orbitals) != 0 : false);
+  const bool stratify_forward_steps = !exact_orbitals &&
+      (env_stratify_forward_steps
+       ? atoi(env_stratify_forward_steps) != 0 : false);
+  const bool stratify_back_paths = !exact_orbitals &&
+      (env_stratify_back_paths
+       ? atoi(env_stratify_back_paths) != 0 : false);
   const bool stratify_single_jump = env_stratify_single_jump
       ? atoi(env_stratify_single_jump) != 0 : true;
   const bool sample_back_orbitals = env_sample_back_orbitals
@@ -753,17 +912,21 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                inv_jump_normalization = 1.0/sampling_jump_rate;
   double p0, pt,  inv_ntraj = 1.0/ntraj,
           *sclf       = array1d<double>(nstep+1),
-          *forward_orbital_shift = stratify_forward_orbitals ? array1d<double>(Jmax) : NULL;
+          *forward_orbital_shift = stratify_forward_orbitals ? array1d<double>(Jmax) : NULL,
+          *back_path_shift = stratify_back_paths ? array1d<double>(Jmax) : NULL,
+          *back_path_uniforms = stratify_back_paths ? array1d<double>(Jmax) : NULL;
+  unsigned long long *forward_step_multiplier = stratify_forward_steps ? array1d<unsigned long long>(Jmax) : NULL,
+                     *forward_step_offset = stratify_forward_steps ? array1d<unsigned long long>(Jmax) : NULL;
   int    *jumps_back = array1d<int>(Jmax),
          *jumps_forward = array1d<int>(Jmax),
          *forward_jump_schedule = array1d<int>(Jmax),
          idx;
   for(int j=0; j<=nstep;  j++) sclf[j] = exp(log_scale*j);
 
-  const vector<double> forward_count_cdf = stratify_forward
+  const vector<double> forward_count_cdf = stratify_forward && !stratify_forward_steps
       ? sepmb_binomial_cdf(nstep, jump_probability) : vector<double>();
   double forward_count_shift = 0.0;
-  if(stratify_forward) {
+  if(stratify_forward && !stratify_forward_steps) {
 #ifdef _YYY_MPI_
     if(myid==master) forward_count_shift = drand48();
     MPI_Bcast(&forward_count_shift, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
@@ -777,6 +940,41 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     MPI_Bcast(forward_orbital_shift, Jmax, MPI_DOUBLE, master, MPI_COMM_WORLD);
 #else
     for(int k=0; k<Jmax; k++) forward_orbital_shift[k] = drand48();
+#endif
+  }
+
+  if(stratify_back_paths) {
+#ifdef _YYY_MPI_
+    if(myid == master) for(int k=0; k<Jmax; k++) back_path_shift[k] = drand48();
+    MPI_Bcast(back_path_shift, Jmax, MPI_DOUBLE, master, MPI_COMM_WORLD);
+#else
+    for(int k=0; k<Jmax; k++) back_path_shift[k] = drand48();
+#endif
+  }
+
+  if(stratify_forward_steps) {
+#ifdef _YYY_MPI_
+    if(myid == master) {
+#endif
+      const unsigned long long modulus = (unsigned long long)ntraj;
+      for(int j=0; j<Jmax; j++) {
+        if(modulus <= 1) {
+          forward_step_multiplier[j] = 1;
+          forward_step_offset[j] = 0;
+        } else {
+          unsigned long long multiplier = 1+sepmb_random_shift()%(modulus-1);
+          while(sepmb_gcd_ull(multiplier, modulus) != 1) {
+            multiplier++;
+            if(multiplier >= modulus) multiplier = 1;
+          }
+          forward_step_multiplier[j] = multiplier;
+          forward_step_offset[j] = sepmb_random_shift()%modulus;
+        }
+      }
+#ifdef _YYY_MPI_
+    }
+    MPI_Bcast(forward_step_multiplier, Jmax, MPI_UNSIGNED_LONG_LONG, master, MPI_COMM_WORLD);
+    MPI_Bcast(forward_step_offset, Jmax, MPI_UNSIGNED_LONG_LONG, master, MPI_COMM_WORLD);
 #endif
   }
 
@@ -1150,7 +1348,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
     double forward_orbital_base_u =
         ((double)(trajectory_offset+n)+0.5)/ntraj;
-    if(stratify_forward) {
+    if(stratify_forward && !stratify_forward_steps) {
       bzero(forward_jump_schedule, Jmax*sizeof(int));
       const double count_u = fmod(forward_count_shift +
           (trajectory_offset+n)*1.0/ntraj, 1.0);
@@ -1182,8 +1380,21 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     for(int j=1; j<=nstep; j++) {
       //printf("    time: %4d", j);
       // jump seperatedly, switch the state between 0 and idx
-      if(stratify_forward ? forward_jump_schedule[j]
-                          : drand48() < jump_probability) {
+      double forward_step_u = 0.0;
+      bool do_forward_jump = false;
+      if(stratify_forward_steps) {
+        const unsigned long long global_trajectory = trajectory_offset+n,
+            permuted_trajectory = (forward_step_multiplier[j]*global_trajectory
+                +forward_step_offset[j])%(unsigned long long)ntraj;
+        forward_step_u = ((double)permuted_trajectory+0.5)/ntraj;
+        do_forward_jump = forward_step_u < jump_probability;
+        if(do_forward_jump && stratify_forward_orbitals && jump_probability > 0.0)
+          forward_orbital_base_u = forward_step_u/jump_probability;
+      } else {
+        do_forward_jump = stratify_forward ? forward_jump_schedule[j]
+                                           : drand48() < jump_probability;
+      }
+      if(do_forward_jump) {
         if((int)state.size() != Nel || (int)vac.size() != Nvac ||
            (excited && state.find(0) == state.end()) ||
            (!excited && state.find(0) != state.end())) {
@@ -1345,12 +1556,24 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                 backward_time_shift, stratify_single_jump,
                 jumps_back) != nj_back) continue;
 
-          int status = 0, fails = 0;
-          do {
-            status = (sampler.*PS[excited0][excited_for])(
-                nj_back, S0, state_for, path);
-            fails -= status;
-          } while(status<0 && fails < 5);
+          int status = 0;
+          if(stratify_back_paths) {
+            const double path_base_u = sepmb_conditioned_count_sector_u(
+                j, jump_probability, nj&1, nj_min,
+                back_accept_prb, nj_back, count_u);
+            for(int k=0; k<nj_back; k++)
+              back_path_uniforms[k] = fmod(back_path_shift[k]+path_base_u, 1.0);
+            status = sepmb_sample_kondo_path_stratified(
+                sampler, Norb, Nel, nj_back, S0, state_for,
+                back_path_uniforms, path);
+          } else {
+            int fails = 0;
+            do {
+              status = (sampler.*PS[excited0][excited_for])(
+                  nj_back, S0, state_for, path);
+              fails -= status;
+            } while(status<0 && fails < 5);
+          }
           if(status<0) continue;
 #else
           int nj_back = nj;
@@ -1505,13 +1728,14 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             : (stratify_single_jump
               ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
               : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
-        : "#PATCH_CHECK: SepMBpoisson v0.96 stratified-label pathwise active\n");
+        : "#PATCH_CHECK: SepMBpoisson v0.98 stratified-Kondo pathwise active\n");
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
-    fprintf(FL, "#sampling: physical_jump_rate=%1.16e sampling_jump_rate=%1.16e rate_scale=%1.16e jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d stratify_forward_orbitals=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
+    fprintf(FL, "#sampling: physical_jump_rate=%1.16e sampling_jump_rate=%1.16e rate_scale=%1.16e jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d stratify_forward_steps=%d stratify_forward_orbitals=%d stratify_back_paths=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
             physical_jump_rate, sampling_jump_rate, rate_scale,
             jump_strength, jump_probability, log_scale, back_replicas,
-            stratify_forward ? 1 : 0, stratify_forward_orbitals ? 1 : 0,
+            stratify_forward ? 1 : 0, stratify_forward_steps ? 1 : 0,
+            stratify_forward_orbitals ? 1 : 0, stratify_back_paths ? 1 : 0,
             exact_orbitals ? 1 : 0,
             stratify_single_jump ? 1 : 0,
             sample_back_orbitals ? 1 : 0,
@@ -1579,6 +1803,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   free1d(jumps_forward);
   free1d(forward_jump_schedule);
   if(forward_orbital_shift) free1d(forward_orbital_shift);
+  if(back_path_shift) free1d(back_path_shift);
+  if(back_path_uniforms) free1d(back_path_uniforms);
+  if(forward_step_multiplier) free1d(forward_step_multiplier);
+  if(forward_step_offset) free1d(forward_step_offset);
   free1d(jc);
 
 	return;
