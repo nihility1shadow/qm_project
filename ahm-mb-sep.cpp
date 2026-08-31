@@ -400,6 +400,7 @@ struct SepmbReferenceContext {
   double constant_shift;
   double energy_origin;
   dcomplex *hamiltonian_work;
+  int operator_part; // 0: H, 1: H0, 2: H1, 3: T, 4: V+electronic
 };
 
 void sepmb_reference_rhs(const int dimension, const double,
@@ -413,6 +414,7 @@ void sepmb_reference_rhs(const int dimension, const double,
   dcomplex *hpsi = context->hamiltonian_work;
   bzero(hpsi, dimension*sizeof(dcomplex));
 
+  if(context->operator_part == 0 || context->operator_part == 2) {
   for(int n=0; n<nfock; n++) {
     const int base = n*nstate;
     for(int source=0; source<nstate; source++) {
@@ -424,6 +426,8 @@ void sepmb_reference_rhs(const int dimension, const double,
       }
     }
   }
+  }
+  if(context->operator_part == 0 || context->operator_part == 1) {
   for(int n=0; n<nfock; n++) {
     const double root_down = n > 0 ? sqrt((double)n) : 0.0,
                  root_up = n+1 < nfock ? sqrt((double)(n+1)) : 0.0;
@@ -439,6 +443,43 @@ void sepmb_reference_rhs(const int dimension, const double,
       if(n > 0) value += linear*root_down*state[(n-1)*nstate+s];
       if(n+1 < nfock) value += linear*root_up*state[(n+1)*nstate+s];
       hpsi[index] = value;
+    }
+  }
+  }
+
+  if(context->operator_part == 3) {
+    for(int n=0; n<nfock; n++) {
+      const double diagonal = 0.5*context->frequency*(n+0.5),
+                   lower_two = n > 1 ? -0.25*context->frequency*sqrt((double)n*(n-1)) : 0.0,
+                   upper_two = n+2 < nfock ? -0.25*context->frequency*sqrt((double)(n+1)*(n+2)) : 0.0;
+      for(int s=0; s<nstate; s++) {
+        const int index = n*nstate+s;
+        dcomplex value = diagonal*state[index];
+        if(n > 1) value += lower_two*state[(n-2)*nstate+s];
+        if(n+2 < nfock) value += upper_two*state[(n+2)*nstate+s];
+        hpsi[index] = value;
+      }
+    }
+  }
+  if(context->operator_part == 4) {
+    for(int n=0; n<nfock; n++) {
+      const double diagonal = 0.5*context->frequency*(n+0.5)+context->constant_shift,
+                   lower_two = n > 1 ? 0.25*context->frequency*sqrt((double)n*(n-1)) : 0.0,
+                   upper_two = n+2 < nfock ? 0.25*context->frequency*sqrt((double)(n+1)*(n+2)) : 0.0,
+                   root_down = n > 0 ? sqrt((double)n) : 0.0,
+                   root_up = n+1 < nfock ? sqrt((double)(n+1)) : 0.0;
+      for(int s=0; s<nstate; s++) {
+        const int index = n*nstate+s;
+        const double linear = context->molecule_occupied[s]
+            ? -context->frequency*context->half_displacement
+            : context->frequency*context->half_displacement;
+        dcomplex value = (diagonal+context->electronic_energy[s]-context->energy_origin)*state[index];
+        if(n > 1) value += lower_two*state[(n-2)*nstate+s];
+        if(n+2 < nfock) value += upper_two*state[(n+2)*nstate+s];
+        if(n > 0) value += linear*root_down*state[(n-1)*nstate+s];
+        if(n+1 < nfock) value += linear*root_up*state[(n+1)*nstate+s];
+        hpsi[index] = value;
+      }
     }
   }
   for(int index=0; index<dimension; index++) {
@@ -707,6 +748,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_deterministic_fock = getenv("SEP_MB_DETERMINISTIC_FOCK"),
              *env_fock_states = getenv("SEP_MB_FOCK_STATES"),
              *env_reference_distance = getenv("SEP_MB_REFERENCE_DISTANCE"),
+             *env_reference_split_operator = getenv("SEP_MB_REFERENCE_SPLIT_OPERATOR"),
+             *env_reference_grid_split = getenv("SEP_MB_REFERENCE_GRID_SPLIT"),
              *env_reference_fock_states = getenv("SEP_MB_REFERENCE_FOCK_STATES"),
              *env_reference_max_states = getenv("SEP_MB_REFERENCE_MAX_STATES"),
              *env_auto_fock_max_mib = getenv("SEP_MB_AUTO_FOCK_MAX_MIB");
@@ -771,6 +814,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   if(reference_distance < -1) reference_distance = -1;
   if(reference_distance > 4) reference_distance = 4;
   const int requested_reference_distance = reference_distance;
+  const bool reference_split_operator = env_reference_split_operator
+      ? atoi(env_reference_split_operator) != 0 : false;
+  const bool reference_grid_split = env_reference_grid_split
+      ? atoi(env_reference_grid_split) != 0 : false;
   int reference_fock_states = env_reference_fock_states
       ? atoi(env_reference_fock_states) : fock_states;
   if(reference_fock_states < 16) reference_fock_states = 16;
@@ -1127,6 +1174,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         reference_energy[reference_initial]+0.5*freq;
     reference_context.hamiltonian_work =
         reference_hamiltonian_work;
+    reference_context.operator_part = 0;
 
     for(int step=0; step<=nwf; step++) {
       {
@@ -1165,9 +1213,55 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         reference_prb[step][2] = vibration_energy;
       }
       if(step < nwf) {
-        Clsrk8(reference_wavefunction, reference_work,
-               reference_dimension, step*dt, dt,
-               (void *)&reference_context, sepmb_reference_rhs);
+        if(reference_grid_split) {
+          reference_context.operator_part = 3;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, 0.25*dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 4;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, 0.5*dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 3;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, 0.25*dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 2;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 3;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, 0.25*dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 4;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, 0.5*dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 3;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, 0.25*dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 0;
+        } else if(reference_split_operator) {
+          reference_context.operator_part = 1;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, 0.5*dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 2;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt+0.5*dt, dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 1;
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt+0.5*dt, 0.5*dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+          reference_context.operator_part = 0;
+        } else {
+          Clsrk8(reference_wavefunction, reference_work,
+                 reference_dimension, step*dt, dt,
+                 (void *)&reference_context, sepmb_reference_rhs);
+        }
       }
     }
 
@@ -2037,7 +2131,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               ? "#PATCH_CHECK: SepMBpoisson v0.64 exact-orbital 2D-single-jump-stratified active\n"
               : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
         : (reference_control
-          ? "#PATCH_CHECK: SepMBpoisson v0.99 low-order reference-control active\n"
+          ? (reference_grid_split
+            ? "#PATCH_CHECK: SepMBpoisson v1.09 nested-split path-control active\n"
+            : (reference_split_operator
+              ? "#PATCH_CHECK: SepMBpoisson v1.08 split-operator path-control active\n"
+              : "#PATCH_CHECK: SepMBpoisson v0.99 low-order reference-control active\n"))
           : (rqmc_replicates > 1
             ? "#PATCH_CHECK: SepMBpoisson v1.03 replicated-RQMC Kondo active\n"
             : "#PATCH_CHECK: SepMBpoisson v0.98 stratified-Kondo pathwise active\n")));
@@ -2052,11 +2150,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             stratify_single_jump ? 1 : 0,
             sample_back_orbitals ? 1 : 0,
             exact_back_jumps);
-    fprintf(FL, "#reference control: active=%d requested_distance=%d selected_distance=%d states=%d max_states=%d fock_states=%d\n",
+    fprintf(FL, "#reference control: active=%d requested_distance=%d selected_distance=%d states=%d max_states=%d fock_states=%d split_operator=%d grid_split=%d\n",
             reference_control ? 1 : 0, requested_reference_distance,
             reference_distance,
             reference_state_count, reference_max_states,
-            reference_fock_states);
+            reference_fock_states, reference_split_operator ? 1 : 0, reference_grid_split ? 1 : 0);
     fprintf(FL, "#backward DP: all_order=%d replicas_min=%d replicas_max=%d replica_power=%1.8e replicas_per_forward=%lld\n",
             all_order_back_dp ? 1 : 0, back_replicas_min, back_replicas,
             back_replica_power, back_replicas_per_forward);
