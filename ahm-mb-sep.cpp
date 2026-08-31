@@ -694,6 +694,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_stratify_forward_orbitals = getenv("SEP_MB_STRATIFY_FORWARD_ORBITALS"),
              *env_stratify_forward_steps = getenv("SEP_MB_STRATIFY_FORWARD_STEPS"),
              *env_stratify_back_paths = getenv("SEP_MB_STRATIFY_BACK_PATHS"),
+             *env_rqmc_replicates = getenv("SEP_MB_RQMC_REPLICATES"),
              *env_stratify_forward = getenv("SEP_MB_STRATIFY_FORWARD_COUNT"),
              *env_exact_orbitals = getenv("SEP_MB_EXACT_ORBITALS"),
              *env_stratify_single_jump = getenv("SEP_MB_STRATIFY_SINGLE_JUMP_TIME"),
@@ -746,6 +747,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
        ? atoi(env_stratify_back_paths) != 0 : false);
   const bool stratify_single_jump = env_stratify_single_jump
       ? atoi(env_stratify_single_jump) != 0 : true;
+  int rqmc_replicates = env_rqmc_replicates ? atoi(env_rqmc_replicates) : 4;
+  if(rqmc_replicates < 1) rqmc_replicates = 1;
+  if(rqmc_replicates > 64) rqmc_replicates = 64;
+  if(rqmc_replicates > ntraj) rqmc_replicates = ntraj;
+  if(rqmc_replicates < 1) rqmc_replicates = 1;
   const bool sample_back_orbitals = env_sample_back_orbitals
       ? atoi(env_sample_back_orbitals) != 0 : true;
   int exact_back_jumps = env_exact_back_jumps ? atoi(env_exact_back_jumps) : 4;
@@ -1184,8 +1190,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                inv_jump_normalization = 1.0/sampling_jump_rate;
   double p0, pt,  inv_ntraj = 1.0/ntraj,
           *sclf       = array1d<double>(nstep+1),
-          *forward_orbital_shift = stratify_forward_orbitals ? array1d<double>(Jmax) : NULL,
-          *back_path_shift = stratify_back_paths ? array1d<double>(Jmax) : NULL,
+          *forward_count_shift = stratify_forward && !stratify_forward_steps
+              ? array1d<double>(rqmc_replicates) : NULL,
+          *forward_orbital_shift = stratify_forward_orbitals ? array1d<double>(rqmc_replicates*Jmax) : NULL,
+          *back_path_shift = stratify_back_paths ? array1d<double>(rqmc_replicates*Jmax) : NULL,
           *back_path_uniforms = stratify_back_paths ? array1d<double>(Jmax) : NULL;
   unsigned long long *forward_step_multiplier = stratify_forward_steps ? array1d<unsigned long long>(Jmax) : NULL,
                      *forward_step_offset = stratify_forward_steps ? array1d<unsigned long long>(Jmax) : NULL;
@@ -1197,30 +1205,29 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
   const vector<double> forward_count_cdf = stratify_forward && !stratify_forward_steps
       ? sepmb_binomial_cdf(nstep, jump_probability) : vector<double>();
-  double forward_count_shift = 0.0;
   if(stratify_forward && !stratify_forward_steps) {
 #ifdef _YYY_MPI_
-    if(myid==master) forward_count_shift = drand48();
-    MPI_Bcast(&forward_count_shift, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+    if(myid==master) for(int r=0; r<rqmc_replicates; r++) forward_count_shift[r] = drand48();
+    MPI_Bcast(forward_count_shift, rqmc_replicates, MPI_DOUBLE, master, MPI_COMM_WORLD);
 #else
-    forward_count_shift = drand48();
+    for(int r=0; r<rqmc_replicates; r++) forward_count_shift[r] = drand48();
 #endif
   }
   if(stratify_forward_orbitals) {
 #ifdef _YYY_MPI_
-    if(myid == master) for(int k=0; k<Jmax; k++) forward_orbital_shift[k] = drand48();
-    MPI_Bcast(forward_orbital_shift, Jmax, MPI_DOUBLE, master, MPI_COMM_WORLD);
+    if(myid == master) for(int k=0; k<rqmc_replicates*Jmax; k++) forward_orbital_shift[k] = drand48();
+    MPI_Bcast(forward_orbital_shift, rqmc_replicates*Jmax, MPI_DOUBLE, master, MPI_COMM_WORLD);
 #else
-    for(int k=0; k<Jmax; k++) forward_orbital_shift[k] = drand48();
+    for(int k=0; k<rqmc_replicates*Jmax; k++) forward_orbital_shift[k] = drand48();
 #endif
   }
 
   if(stratify_back_paths) {
 #ifdef _YYY_MPI_
-    if(myid == master) for(int k=0; k<Jmax; k++) back_path_shift[k] = drand48();
-    MPI_Bcast(back_path_shift, Jmax, MPI_DOUBLE, master, MPI_COMM_WORLD);
+    if(myid == master) for(int k=0; k<rqmc_replicates*Jmax; k++) back_path_shift[k] = drand48();
+    MPI_Bcast(back_path_shift, rqmc_replicates*Jmax, MPI_DOUBLE, master, MPI_COMM_WORLD);
 #else
-    for(int k=0; k<Jmax; k++) back_path_shift[k] = drand48();
+    for(int k=0; k<rqmc_replicates*Jmax; k++) back_path_shift[k] = drand48();
 #endif
   }
 
@@ -1373,6 +1380,13 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     }
 
     for(int n=0; n<ntraj_local; n++) {
+      // Interleaved groups provide independent randomized QMC replicas in one run.
+      const unsigned long long global_trajectory = trajectory_offset+n;
+      const int rqmc_group = global_trajectory%rqmc_replicates;
+      const unsigned long long rqmc_group_index = global_trajectory/rqmc_replicates,
+          rqmc_group_size = (ntraj+rqmc_replicates-1-rqmc_group)/rqmc_replicates;
+      const double rqmc_left_coordinate = rqmc_group_index*1.0/rqmc_group_size;
+
       bzero(vec_for, vec_bytes);
       vec_for[initial_basis] = 1.0;
       dcomplex alp_for = alp_init,
@@ -1382,8 +1396,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
       if(stratify_forward) {
         bzero(forward_jump_schedule, Jmax*sizeof(int));
-        const double count_u = fmod(forward_count_shift +
-            (trajectory_offset+n)*1.0/ntraj, 1.0);
+        const double count_u = fmod(forward_count_shift[rqmc_group] +
+            rqmc_left_coordinate, 1.0);
         const int nj_forward = sepmb_sample_cdf(forward_count_cdf, count_u);
         if(sepmb_sample_jump_times_stratified(nstep, nj_forward,
               (unsigned long long)(trajectory_offset+n), forward_time_shift,
@@ -1603,6 +1617,14 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   };
 
   for(int n=0; n<ntraj_local; n++) {
+    // Interleaved groups provide independent randomized QMC replicas in one run.
+    const unsigned long long global_trajectory = trajectory_offset+n;
+    const int rqmc_group = global_trajectory%rqmc_replicates;
+    const unsigned long long rqmc_group_index = global_trajectory/rqmc_replicates,
+        rqmc_group_size = (ntraj+rqmc_replicates-1-rqmc_group)/rqmc_replicates;
+    const double rqmc_left_coordinate = rqmc_group_index*1.0/rqmc_group_size,
+                 rqmc_mid_coordinate = (rqmc_group_index+0.5)/rqmc_group_size;
+
     alp    = alp_init;
     wgt    = wgt_init;
     state  = S0;
@@ -1619,12 +1641,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         sign, found;
     bool forward_reference_path = reference_control;
 
-    double forward_orbital_base_u =
-        ((double)(trajectory_offset+n)+0.5)/ntraj;
+    double forward_orbital_base_u = rqmc_mid_coordinate;
     if(stratify_forward && !stratify_forward_steps) {
       bzero(forward_jump_schedule, Jmax*sizeof(int));
-      const double count_u = fmod(forward_count_shift +
-          (trajectory_offset+n)*1.0/ntraj, 1.0);
+      const double count_u = fmod(forward_count_shift[rqmc_group] +
+          rqmc_left_coordinate, 1.0);
       const int nj_forward = sepmb_sample_cdf(forward_count_cdf, count_u);
       if(stratify_forward_orbitals) {
         const double sector_lower = nj_forward > 0
@@ -1682,7 +1703,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             abort();
           }
           idx = stratify_forward_orbitals
-              ? sepmb_stratified_set_element(vac, fmod(forward_orbital_shift[nj]
+              ? sepmb_stratified_set_element(vac, fmod(forward_orbital_shift[rqmc_group*Jmax+nj]
                     +forward_orbital_base_u, 1.0))
               : get_random_element(vac);
           if(idx < 0 || idx >= Norb) {
@@ -1715,7 +1736,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             abort();
           }
           idx = stratify_forward_orbitals
-              ? sepmb_stratified_set_element(state, fmod(forward_orbital_shift[nj]
+              ? sepmb_stratified_set_element(state, fmod(forward_orbital_shift[rqmc_group*Jmax+nj]
                     +forward_orbital_base_u, 1.0))
               : get_random_element(state);
           if(idx <= 0 || idx >= Norb) {
@@ -1840,7 +1861,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                 j, jump_probability, nj&1, nj_min,
                 back_accept_prb, nj_back, count_u);
             for(int k=0; k<nj_back; k++)
-              back_path_uniforms[k] = fmod(back_path_shift[k]+path_base_u, 1.0);
+            back_path_uniforms[k] = fmod(back_path_shift[rqmc_group*Jmax+k]+path_base_u, 1.0);
             status = sepmb_sample_kondo_path_stratified(
                 sampler, Norb, Nel, nj_back, S0, state_for,
                 back_path_uniforms, path);
@@ -2017,7 +2038,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
         : (reference_control
           ? "#PATCH_CHECK: SepMBpoisson v0.99 low-order reference-control active\n"
-          : "#PATCH_CHECK: SepMBpoisson v0.98 stratified-Kondo pathwise active\n"));
+          : (rqmc_replicates > 1
+            ? "#PATCH_CHECK: SepMBpoisson v1.03 replicated-RQMC Kondo active\n"
+            : "#PATCH_CHECK: SepMBpoisson v0.98 stratified-Kondo pathwise active\n")));
     fprintf(FL, "#discretizing the bath:\n");
     for(int n=0; n<Norb; n++) fprintf(FL, "#%6d %1.16e %1.16e\n", n, cpl[n], En[n]);
     fprintf(FL, "#sampling: physical_jump_rate=%1.16e sampling_jump_rate=%1.16e rate_scale=%1.16e jump_strength=%1.16e jump_probability=%1.16e log_scale=%1.16e back_replicas=%d stratify_forward=%d stratify_forward_steps=%d stratify_forward_orbitals=%d stratify_back_paths=%d exact_orbitals=%d stratify_single_jump_time=%d sample_back_orbitals=%d exact_back_jumps=%d\n",
@@ -2037,6 +2060,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     fprintf(FL, "#backward DP: all_order=%d replicas_min=%d replicas_max=%d replica_power=%1.8e replicas_per_forward=%lld\n",
             all_order_back_dp ? 1 : 0, back_replicas_min, back_replicas,
             back_replica_power, back_replicas_per_forward);
+    fprintf(FL, "#RQMC: replicates=%d shift_storage_bytes=%1.0f\n", rqmc_replicates,
+            1.0*sizeof(double)*rqmc_replicates*(1+2*Jmax));
     fprintf(FL, "#adaptive measurement: gap=%1.16e period_steps=%d nmeas=%d nwf=%d tmax=%1.16e forced_stride=%d\n",
             gap, period_steps, nmeas, nwf, nwf*dt, forced_measure_stride);
     fprintf(FL, "#recurrence measurement: enabled=%d vibrational_period=%1.16e half_width=%1.16e stride_steps=%d\n",
@@ -2100,6 +2125,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   free1d(jumps_back);
   free1d(jumps_forward);
   free1d(forward_jump_schedule);
+  if(forward_count_shift) free1d(forward_count_shift);
   if(forward_orbital_shift) free1d(forward_orbital_shift);
   if(back_path_shift) free1d(back_path_shift);
   if(back_path_uniforms) free1d(back_path_uniforms);
