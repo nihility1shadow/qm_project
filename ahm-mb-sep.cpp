@@ -80,6 +80,65 @@ double sepmb_binom(const int n, const int k) {
   return r;
 }
 
+long long sepmb_reference_state_count(const int Norb, const int Nel,
+    const bool initial_contains_zero, const int distance) {
+  if(distance < 0) return 0;
+  const int occupied_bath = Nel-(initial_contains_zero ? 1 : 0),
+            vacant_bath = Norb-1-occupied_bath;
+  long double count = 0.0L;
+  for(int d=0; d<=distance; d++) {
+    count += initial_contains_zero
+        ? sepmb_binom(occupied_bath, d)*
+              (sepmb_binom(vacant_bath, d)+sepmb_binom(vacant_bath, d+1))
+        : sepmb_binom(vacant_bath, d)*
+              (sepmb_binom(occupied_bath, d)+sepmb_binom(occupied_bath, d+1));
+  }
+  return count > 9.22e18L ? 9220000000000000000LL
+                           : (long long)(count+0.5L);
+}
+
+vector<set<int> > sepmb_generate_reference_states(
+    const int Norb, const set<int>& initial, const int distance) {
+  vector<set<int> > states;
+  if(distance < 0) return states;
+
+  set<set<int> > seen;
+  vector<set<int> > frontier(1, initial);
+  seen.insert(initial);
+  states.push_back(initial);
+  const int max_jumps = 2*distance+1;
+  for(int depth=0; depth<max_jumps && !frontier.empty(); depth++) {
+    vector<set<int> > next;
+    for(const set<int>& current : frontier) {
+      if(current.find(0) != current.end()) {
+        for(int orbital=1; orbital<Norb; orbital++) {
+          if(current.find(orbital) != current.end()) continue;
+          set<int> target = current;
+          target.erase(0);
+          target.insert(orbital);
+          if(seen.insert(target).second) {
+            next.push_back(target);
+            states.push_back(target);
+          }
+        }
+      } else {
+        for(int orbital : current) {
+          if(orbital == 0) continue;
+          set<int> target = current;
+          target.erase(orbital);
+          target.insert(0);
+          if(seen.insert(target).second) {
+            next.push_back(target);
+            states.push_back(target);
+          }
+        }
+      }
+    }
+    frontier.swap(next);
+  }
+  return states;
+}
+
 double sepmb_kondo_degeneracy(const int Norb, const int Nel,
     const int excited0, const int nj, const int d) {
   const int Nvac = Norb - Nel;
@@ -750,6 +809,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
              *env_reference_distance = getenv("SEP_MB_REFERENCE_DISTANCE"),
              *env_reference_split_operator = getenv("SEP_MB_REFERENCE_SPLIT_OPERATOR"),
              *env_reference_grid_split = getenv("SEP_MB_REFERENCE_GRID_SPLIT"),
+             *env_path_local_basis = getenv("SEP_MB_PATH_LOCAL_BASIS"),
              *env_reference_fock_states = getenv("SEP_MB_REFERENCE_FOCK_STATES"),
              *env_reference_max_states = getenv("SEP_MB_REFERENCE_MAX_STATES"),
              *env_auto_fock_max_mib = getenv("SEP_MB_AUTO_FOCK_MAX_MIB");
@@ -818,6 +878,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       ? atoi(env_reference_split_operator) != 0 : false;
   const bool reference_grid_split = env_reference_grid_split
       ? atoi(env_reference_grid_split) != 0 : false;
+  const bool path_local_basis = env_path_local_basis
+      ? atoi(env_path_local_basis) != 0 : false;
   int reference_fock_states = env_reference_fock_states
       ? atoi(env_reference_fock_states) : fock_states;
   if(reference_fock_states < 16) reference_fock_states = 16;
@@ -828,11 +890,19 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   double auto_fock_max_mib = env_auto_fock_max_mib
       ? atof(env_auto_fock_max_mib) : 256.0;
   if(auto_fock_max_mib < 1.0) auto_fock_max_mib = 1.0;
+  const long double hilbert_state_estimate = path_local_basis
+      ? sepmb_binom(Norb, Nel) : Nhs;
   const long double estimated_fock_bytes =
-      3.0L*Nhs*fock_states*sizeof(dcomplex);
+      3.0L*hilbert_state_estimate*fock_states*sizeof(dcomplex);
   const bool deterministic_fock = deterministic_fock_mode < 0
       ? estimated_fock_bytes <= auto_fock_max_mib*1024.0L*1024.0L
       : deterministic_fock_mode > 0;
+  if(path_local_basis && (exact_orbitals || deterministic_fock)) {
+    if(myid == master) {
+      fprintf(stderr, "SEP_MB_PATH_LOCAL_BASIS requires SEP_MB_EXACT_ORBITALS=0 and SEP_MB_DETERMINISTIC_FOCK=0.\n");
+    }
+    abort();
+  }
   if(myid == master) {
     printf("#SEP_MB_ALGORITHM fock_mode=%d selected=%s fock_states=%d estimated_fock_work_mib=%1.6Lf auto_fock_max_mib=%1.6f\n",
            deterministic_fock_mode,
@@ -1039,17 +1109,32 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   csproj(wgt_init*Lfct, alp_init, wgt_init, alp_init, excited0, S0, prb[0]);
   vector<set<int> > reference_states;
   while(reference_distance >= 0) {
-    reference_states.clear();
-    for(int s=0; s<Nhs; s++) {
-      set<int> basis_state;
-      for(int k=0; k<Nel; k++) basis_state.insert(occ[s][k]);
-      const int distance =
-          sepmb_kondo_distance_from_initial(S0, basis_state);
-      if(distance >= 0 && distance <= reference_distance) {
-        reference_states.push_back(basis_state);
+    if(path_local_basis) {
+      const long long expected_states = sepmb_reference_state_count(
+          Norb, Nel, S0.find(0) != S0.end(), reference_distance);
+      if(expected_states <= reference_max_states) {
+        reference_states = sepmb_generate_reference_states(
+            Norb, S0, reference_distance);
+        if((long long)reference_states.size() != expected_states) {
+          cerr<<"path-local reference-state count mismatch.\n";
+          abort();
+        }
+        break;
       }
+    } else {
+      reference_states.clear();
+      for(int s=0; s<Nhs; s++) {
+        set<int> basis_state;
+        for(int k=0; k<Nel; k++) basis_state.insert(occ[s][k]);
+        const int distance =
+            sepmb_kondo_distance_from_initial(S0, basis_state);
+        if(distance >= 0 && distance <= reference_distance) {
+          reference_states.push_back(basis_state);
+        }
+      }
+      if((int)reference_states.size() <= reference_max_states) break;
     }
-    if((int)reference_states.size() <= reference_max_states) break;
+    reference_states.clear();
     reference_distance--;
   }
   if(reference_distance < 0) reference_states.clear();
@@ -2132,7 +2217,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               : "#PATCH_CHECK: SepMBpoisson v0.62 exact-orbital Rao-Blackwell active\n"))
         : (reference_control
           ? (reference_grid_split
-            ? "#PATCH_CHECK: SepMBpoisson v1.09 nested-split path-control active\n"
+            ? (path_local_basis
+              ? "#PATCH_CHECK: SepMBpoisson v1.10 path-local nested-split control active\n"
+              : "#PATCH_CHECK: SepMBpoisson v1.09 nested-split path-control active\n")
             : (reference_split_operator
               ? "#PATCH_CHECK: SepMBpoisson v1.08 split-operator path-control active\n"
               : "#PATCH_CHECK: SepMBpoisson v0.99 low-order reference-control active\n"))
@@ -2150,11 +2237,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             stratify_single_jump ? 1 : 0,
             sample_back_orbitals ? 1 : 0,
             exact_back_jumps);
-    fprintf(FL, "#reference control: active=%d requested_distance=%d selected_distance=%d states=%d max_states=%d fock_states=%d split_operator=%d grid_split=%d\n",
+    fprintf(FL, "#reference control: active=%d requested_distance=%d selected_distance=%d states=%d max_states=%d fock_states=%d split_operator=%d grid_split=%d path_local_basis=%d\n",
             reference_control ? 1 : 0, requested_reference_distance,
             reference_distance,
             reference_state_count, reference_max_states,
-            reference_fock_states, reference_split_operator ? 1 : 0, reference_grid_split ? 1 : 0);
+            reference_fock_states, reference_split_operator ? 1 : 0,
+            reference_grid_split ? 1 : 0, path_local_basis ? 1 : 0);
     fprintf(FL, "#backward DP: all_order=%d replicas_min=%d replicas_max=%d replica_power=%1.8e replicas_per_forward=%lld\n",
             all_order_back_dp ? 1 : 0, back_replicas_min, back_replicas,
             back_replica_power, back_replicas_per_forward);
@@ -2171,9 +2259,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     const int phase_memory_bits = nstep > 1
         ? 1+(int)ceil(log((double)nstep)/log(2.0)) : 1;
     fprintf(FL, "#electronic-phase memory: mode=binary-power-table phase_table_bytes=%1.0f phase_bits=%d legacy_time_state_table_bytes=%1.0f\n",
-            1.0*sizeof(dcomplex)*Nhs*phase_memory_bits,
+            (double)(1.0L*sizeof(dcomplex)*hilbert_state_estimate*phase_memory_bits),
             phase_memory_bits,
-            1.0*sizeof(dcomplex)*(nstep+1.0)*Nhs);
+            (double)(1.0L*sizeof(dcomplex)*(nstep+1.0)*hilbert_state_estimate));
     double *rlt = array1d<double>(Norb+3);
     int il = 0;
     for(int t=0; t<=nwf; t++)  {

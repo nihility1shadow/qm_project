@@ -329,10 +329,17 @@ int diabatic(int argc, char **argv) {
         ahm.diseven(Norb, eta, wc);
         ahm.set_Nel(Nel, Norb);
         ahm.set_delE(delE);
-        ahm.set_basis();
-        ahm.calc_Eocc();
-        ahm.set_exc();
-        ahm.set_Nex();
+        const char *env_path_local_basis = getenv("SEP_MB_PATH_LOCAL_BASIS");
+        const bool path_local_basis = job==1 && env_path_local_basis &&
+            atoi(env_path_local_basis) != 0;
+        if(!path_local_basis) {
+          ahm.set_basis();
+          ahm.calc_Eocc();
+          ahm.set_exc();
+          ahm.set_Nex();
+        } else if(myid == master) {
+          printf("#AHAU_BASIS mode=path-local full_determinant_basis=skipped\n");
+        }
 
         dcomplex alp0 = sqrt(mass*freq/2)*(xinit+(pinit/(mass*freq))*I),
                  wgt  = 1.0;
