@@ -1,0 +1,33 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --time=00:30:00
+#SBATCH --mem=12G
+set -euo pipefail
+module purge
+module load gcc/12.1.0 openmpi/4.1.8
+project=/data/home/yd101802/yd101802/nonadia
+run="$project/cloud-runs/v111-distributed-20260905/$SLURM_JOB_ID"
+mkdir -p "$run"
+cd "$run"
+export LD_LIBRARY_PATH="$project/.deps/install/lib:${LD_LIBRARY_PATH:-}"
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+export AHM_WC_EV=2.7 AHM_ETA=0.30e-6 AHM_DELE_EV=-17.194874968839816
+export AHM_NSTEP="$1" SEP_MB_TMAX="$(( $1 / 2 ))" AHM_SEED="${8:-111001}"
+export SEP_MB_DETERMINISTIC_FOCK=0 SEP_MB_EXACT_ORBITALS=0
+export SEP_MB_PATH_LOCAL_BASIS=1 SEP_MB_REFERENCE_GRID_SPLIT=1
+export SEP_MB_REFERENCE_SPLIT_OPERATOR=1
+export SEP_MB_REFERENCE_DISTANCE="$5" SEP_MB_REFERENCE_MAX_STATES="$6"
+export SEP_MB_REFERENCE_FOCK_STATES="${FLEVELS:-384}" SEP_MB_REFERENCE_MPI="$7"
+export SEP_MB_RATE_SCALE=1.5 SEP_MB_MEASURE_STRIDE=4
+export SEP_MB_BACK_REPLICAS="${BACK_REPLICAS:-16}" SEP_MB_BACK_REPLICAS_MIN=16
+export SEP_MB_BACK_REPLICA_POWER=2 SEP_MB_STRATIFY_FORWARD_COUNT=1
+export SEP_MB_STRATIFY_SINGLE_JUMP_TIME=1 SEP_MB_SAMPLE_BACK_ORBITALS=1
+export SEP_MB_STRATIFY_FORWARD_ORBITALS=1 SEP_MB_STRATIFY_FORWARD_STEPS=1
+export SEP_MB_STRATIFY_BACK_PATHS=1 SEP_MB_RQMC_REPLICATES=4
+export SEP_MB_EXACT_BACK_JUMPS=0 SEP_MB_ALL_ORDER_BACK_DP=1
+export SEP_MB_RECURRENCE_DENSE=1 SEP_MB_RECURRENCE_STRIDE=3
+binary="$project/${BINARY:-na_mpi_v111_distributed.out}"
+env | sort | grep -E '^(AHM_|SEP_MB_|SLURM_NTASKS)' > config.txt
+sha256sum "$binary" > binary.sha256
+/usr/bin/time -f 'wall_seconds=%e launcher_peak_rss_kb=%M' -o time.txt \
+  mpirun --bind-to core "$binary" 10 1 "$2" "$3" "$4" > program.out 2> program.err

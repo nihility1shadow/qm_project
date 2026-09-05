@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <map>
 #include <sys/resource.h>
+#include <chrono>
 
 #define _YYY_REALSPACE_AV_
 
@@ -24,11 +25,16 @@ void sepmb_report_peak_rss() {
       ? usage.ru_maxrss : -1;
 #ifdef _YYY_MPI_
   long max_peak_rss_kb = peak_rss_kb;
+  long sum_peak_rss_kb = 0;
   MPI_Reduce(&peak_rss_kb, &max_peak_rss_kb, 1, MPI_LONG,
       MPI_MAX, master, MPI_COMM_WORLD);
+  MPI_Reduce(&peak_rss_kb, &sum_peak_rss_kb, 1, MPI_LONG,
+      MPI_SUM, master, MPI_COMM_WORLD);
   if(myid == master) {
     printf("#SEP_MB_RESOURCE max_rank_peak_rss_kb=%ld ranks=%d\n",
            max_peak_rss_kb, nproc);
+    printf("#SEP_MB_RESOURCE sum_rank_peak_rss_kb=%ld (sum of individual peaks, not simultaneous RSS)\n",
+           sum_peak_rss_kb);
     fflush(stdout);
   }
 #else
@@ -451,6 +457,10 @@ struct SepmbFockContext {
 struct SepmbReferenceContext {
   int nstate;
   int nfock;
+  int fock_begin;
+  int total_fock;
+  bool distributed;
+  vector<dcomplex> halo;
   const vector<vector<pair<int, dcomplex> > > *transitions;
   const double *electronic_energy;
   const int *molecule_occupied;
@@ -462,6 +472,34 @@ struct SepmbReferenceContext {
   int operator_part; // 0: H, 1: H0, 2: H1, 3: T, 4: V+electronic
 };
 
+// H1 acts within each oscillator row. Only two adjacent oscillator rows
+// are communicated for T/V; no rank stores the global wavefunction.
+void sepmb_reference_exchange(SepmbReferenceContext& context,
+    const dcomplex *state) {
+#ifdef _YYY_MPI_
+  if(context.distributed) {
+    const int rows = 2*context.nstate;
+    const int left = myid > 0 ? myid-1 : MPI_PROC_NULL;
+    const int right = myid+1 < nproc ? myid+1 : MPI_PROC_NULL;
+    MPI_Sendrecv(state, 2*rows, MPI_DOUBLE, left, 1110,
+        context.halo.data()+rows, 2*rows, MPI_DOUBLE, right, 1110,
+        MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Sendrecv(state+(context.nfock-2)*context.nstate,
+        2*rows, MPI_DOUBLE, right, 1111,
+        context.halo.data(), 2*rows, MPI_DOUBLE, left, 1111,
+        MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  }
+#endif
+}
+
+const dcomplex *sepmb_reference_row(const SepmbReferenceContext& context,
+    const dcomplex *state, const int n) {
+  if(n < 0) return context.halo.data()+(n+2)*context.nstate;
+  if(n >= context.nfock)
+    return context.halo.data()+(2+n-context.nfock)*context.nstate;
+  return state+n*context.nstate;
+}
+
 void sepmb_reference_rhs(const int dimension, const double,
     const double accumulator_factor, const double derivative_factor,
     void *parameters,
@@ -472,9 +510,11 @@ void sepmb_reference_rhs(const int dimension, const double,
   if(dimension != nstate*nfock) abort();
   dcomplex *hpsi = context->hamiltonian_work;
   bzero(hpsi, dimension*sizeof(dcomplex));
+  if(context->operator_part != 2) sepmb_reference_exchange(*context, state);
 
   if(context->operator_part == 0 || context->operator_part == 2) {
   for(int n=0; n<nfock; n++) {
+    const int gn = n+context->fock_begin;
     const int base = n*nstate;
     for(int source=0; source<nstate; source++) {
       const dcomplex amplitude = state[base+source];
@@ -488,19 +528,20 @@ void sepmb_reference_rhs(const int dimension, const double,
   }
   if(context->operator_part == 0 || context->operator_part == 1) {
   for(int n=0; n<nfock; n++) {
-    const double root_down = n > 0 ? sqrt((double)n) : 0.0,
-                 root_up = n+1 < nfock ? sqrt((double)(n+1)) : 0.0;
+    const int gn = n+context->fock_begin;
+    const double root_down = gn > 0 ? sqrt((double)gn) : 0.0,
+                 root_up = gn+1 < context->total_fock ? sqrt((double)(gn+1)) : 0.0;
     for(int s=0; s<nstate; s++) {
       const int index = n*nstate+s;
       const double diagonal = context->electronic_energy[s]
-          +context->frequency*(n+0.5)+context->constant_shift
+          +context->frequency*(gn+0.5)+context->constant_shift
           -context->energy_origin;
       const double linear = context->molecule_occupied[s]
           ? -context->frequency*context->half_displacement
           : context->frequency*context->half_displacement;
       dcomplex value = hpsi[index]+diagonal*state[index];
-      if(n > 0) value += linear*root_down*state[(n-1)*nstate+s];
-      if(n+1 < nfock) value += linear*root_up*state[(n+1)*nstate+s];
+      if(gn > 0) value += linear*root_down*sepmb_reference_row(*context, state, n-1)[s];
+      if(gn+1 < context->total_fock) value += linear*root_up*sepmb_reference_row(*context, state, n+1)[s];
       hpsi[index] = value;
     }
   }
@@ -508,35 +549,37 @@ void sepmb_reference_rhs(const int dimension, const double,
 
   if(context->operator_part == 3) {
     for(int n=0; n<nfock; n++) {
-      const double diagonal = 0.5*context->frequency*(n+0.5),
-                   lower_two = n > 1 ? -0.25*context->frequency*sqrt((double)n*(n-1)) : 0.0,
-                   upper_two = n+2 < nfock ? -0.25*context->frequency*sqrt((double)(n+1)*(n+2)) : 0.0;
+    const int gn = n+context->fock_begin;
+      const double diagonal = 0.5*context->frequency*(gn+0.5),
+                   lower_two = gn > 1 ? -0.25*context->frequency*sqrt((double)gn*(gn-1)) : 0.0,
+                   upper_two = gn+2 < context->total_fock ? -0.25*context->frequency*sqrt((double)(gn+1)*(gn+2)) : 0.0;
       for(int s=0; s<nstate; s++) {
         const int index = n*nstate+s;
         dcomplex value = diagonal*state[index];
-        if(n > 1) value += lower_two*state[(n-2)*nstate+s];
-        if(n+2 < nfock) value += upper_two*state[(n+2)*nstate+s];
+        if(gn > 1) value += lower_two*sepmb_reference_row(*context, state, n-2)[s];
+        if(gn+2 < context->total_fock) value += upper_two*sepmb_reference_row(*context, state, n+2)[s];
         hpsi[index] = value;
       }
     }
   }
   if(context->operator_part == 4) {
     for(int n=0; n<nfock; n++) {
-      const double diagonal = 0.5*context->frequency*(n+0.5)+context->constant_shift,
-                   lower_two = n > 1 ? 0.25*context->frequency*sqrt((double)n*(n-1)) : 0.0,
-                   upper_two = n+2 < nfock ? 0.25*context->frequency*sqrt((double)(n+1)*(n+2)) : 0.0,
-                   root_down = n > 0 ? sqrt((double)n) : 0.0,
-                   root_up = n+1 < nfock ? sqrt((double)(n+1)) : 0.0;
+    const int gn = n+context->fock_begin;
+      const double diagonal = 0.5*context->frequency*(gn+0.5)+context->constant_shift,
+                   lower_two = gn > 1 ? 0.25*context->frequency*sqrt((double)gn*(gn-1)) : 0.0,
+                   upper_two = gn+2 < context->total_fock ? 0.25*context->frequency*sqrt((double)(gn+1)*(gn+2)) : 0.0,
+                   root_down = gn > 0 ? sqrt((double)gn) : 0.0,
+                   root_up = gn+1 < context->total_fock ? sqrt((double)(gn+1)) : 0.0;
       for(int s=0; s<nstate; s++) {
         const int index = n*nstate+s;
         const double linear = context->molecule_occupied[s]
             ? -context->frequency*context->half_displacement
             : context->frequency*context->half_displacement;
         dcomplex value = (diagonal+context->electronic_energy[s]-context->energy_origin)*state[index];
-        if(n > 1) value += lower_two*state[(n-2)*nstate+s];
-        if(n+2 < nfock) value += upper_two*state[(n+2)*nstate+s];
-        if(n > 0) value += linear*root_down*state[(n-1)*nstate+s];
-        if(n+1 < nfock) value += linear*root_up*state[(n+1)*nstate+s];
+        if(gn > 1) value += lower_two*sepmb_reference_row(*context, state, n-2)[s];
+        if(gn+2 < context->total_fock) value += upper_two*sepmb_reference_row(*context, state, n+2)[s];
+        if(gn > 0) value += linear*root_down*sepmb_reference_row(*context, state, n-1)[s];
+        if(gn+1 < context->total_fock) value += linear*root_up*sepmb_reference_row(*context, state, n+1)[s];
         hpsi[index] = value;
       }
     }
@@ -874,6 +917,18 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   if(reference_distance < -1) reference_distance = -1;
   if(reference_distance > 4) reference_distance = 4;
   const int requested_reference_distance = reference_distance;
+  const char *env_reference_mpi = getenv("SEP_MB_REFERENCE_MPI");
+  const bool requested_reference_mpi = env_reference_mpi &&
+      atoi(env_reference_mpi) != 0;
+  bool reference_mpi = false;
+#ifdef _YYY_MPI_
+  reference_mpi = requested_reference_mpi && nproc > 1;
+#else
+  if(requested_reference_mpi) {
+    fprintf(stderr, "SEP_MB_REFERENCE_MPI requires an MPI build.\n");
+    abort();
+  }
+#endif
   const bool reference_split_operator = env_reference_split_operator
       ? atoi(env_reference_split_operator) != 0 : false;
   const bool reference_grid_split = env_reference_grid_split
@@ -884,6 +939,19 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       ? atoi(env_reference_fock_states) : fock_states;
   if(reference_fock_states < 16) reference_fock_states = 16;
   if(reference_fock_states > 512) reference_fock_states = 512;
+  int reference_fock_begin = 0, reference_local_fock = reference_fock_states;
+#ifdef _YYY_MPI_
+  if(reference_mpi) {
+    if(nproc > reference_fock_states/2) {
+      if(myid == master)
+        fprintf(stderr, "Distributed reference needs at least 2 Fock levels/rank; reduce ranks or increase Fock states.\n");
+      MPI_Abort(MPI_COMM_WORLD, 2);
+    }
+    reference_fock_begin = reference_fock_states*myid/nproc;
+    reference_local_fock = reference_fock_states*(myid+1)/nproc
+        -reference_fock_begin;
+  }
+#endif
   int reference_max_states = env_reference_max_states
       ? atoi(env_reference_max_states) : 4096;
   if(reference_max_states < 1) reference_max_states = 1;
@@ -1161,7 +1229,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     }
   }
 
-  if(reference_control && myid==master) {
+  const auto reference_started = std::chrono::steady_clock::now();
+  if(reference_control && (reference_mpi || myid==master)) {
     map<set<int>, int> reference_index;
     for(int s=0; s<reference_state_count; s++) {
       reference_index[reference_states[s]] = s;
@@ -1230,7 +1299,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                  coordinate_factor = sqrt(1.0/(2.0*mass*freq));
     const dcomplex centered_alpha = alp_init-half_displacement;
     const int reference_dimension =
-        reference_state_count*reference_fock_states;
+        reference_state_count*reference_local_fock;
     dcomplex *reference_wavefunction =
                  array1d<dcomplex>(reference_dimension),
              *reference_work = array1d<dcomplex>(reference_dimension),
@@ -1238,16 +1307,22 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
                  array1d<dcomplex>(reference_dimension);
     dcomplex coefficient =
         wgt_init*exp(-0.5*norm(centered_alpha));
-    reference_wavefunction[reference_initial] = coefficient;
-    for(int n=1; n<reference_fock_states; n++) {
-      coefficient *= centered_alpha/sqrt((double)n);
-      reference_wavefunction[n*reference_state_count+reference_initial] =
-          coefficient;
+    for(int n=0; n<reference_fock_states; n++) {
+      if(n > 0) coefficient *= centered_alpha/sqrt((double)n);
+      if(n >= reference_fock_begin &&
+          n < reference_fock_begin+reference_local_fock)
+        reference_wavefunction[(n-reference_fock_begin)*reference_state_count+
+            reference_initial] = coefficient;
     }
 
     SepmbReferenceContext reference_context;
     reference_context.nstate = reference_state_count;
-    reference_context.nfock = reference_fock_states;
+    reference_context.nfock = reference_local_fock;
+    reference_context.fock_begin = reference_fock_begin;
+    reference_context.total_fock = reference_fock_states;
+    reference_context.distributed = reference_mpi;
+    reference_context.halo.assign(reference_mpi ? 4*reference_state_count : 0,
+        dcomplex(0.0));
     reference_context.transitions = &reference_transitions;
     reference_context.electronic_energy = reference_energy;
     reference_context.molecule_occupied =
@@ -1263,6 +1338,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
     for(int step=0; step<=nwf; step++) {
       {
+        vector<double> reference_row(Norb+3, 0.0);
+        sepmb_reference_exchange(reference_context, reference_wavefunction);
         double reference_norm = 0.0,
                coordinate_ladder = 0.0,
                vibration_energy = 0.0;
@@ -1270,32 +1347,44 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           double determinant_probability = 0.0;
           const double linear = reference_molecule_occupied[s]
               ? -freq*half_displacement : freq*half_displacement;
-          for(int n=0; n<reference_fock_states; n++) {
+          for(int n=0; n<reference_local_fock; n++) {
+            const int gn = n+reference_fock_begin;
             const int index = n*reference_state_count+s;
             const double probability =
                 norm(reference_wavefunction[index]);
             determinant_probability += probability;
             vibration_energy +=
-                (freq*(n+0.5)+constant_shift)*probability;
-            if(n+1 < reference_fock_states) {
-              const double ladder = 2.0*sqrt((double)(n+1))*real(
+                (freq*(gn+0.5)+constant_shift)*probability;
+            if(gn+1 < reference_fock_states) {
+              const double ladder = 2.0*sqrt((double)(gn+1))*real(
                   conj(reference_wavefunction[index])*
-                  reference_wavefunction[(n+1)*reference_state_count+s]);
+                  sepmb_reference_row(reference_context, reference_wavefunction, n+1)[s]);
               coordinate_ladder += ladder;
               vibration_energy += linear*ladder;
             }
           }
           reference_norm += determinant_probability;
           for(int orbital : reference_states[s]) {
-            reference_prb[step][3+orbital] +=
+            reference_row[3+orbital] +=
                 determinant_probability;
           }
         }
-        reference_prb[step][0] = Nel*reference_norm;
-        reference_prb[step][1] =
+        reference_row[0] = Nel*reference_norm;
+        reference_row[1] =
             0.5*delx*reference_norm+
             coordinate_factor*coordinate_ladder;
-        reference_prb[step][2] = vibration_energy;
+        reference_row[2] = vibration_energy;
+#ifdef _YYY_MPI_
+        if(reference_mpi) {
+          MPI_Reduce(reference_row.data(),
+              myid==master ? reference_prb[step] : NULL, Norb+3,
+              MPI_DOUBLE, MPI_SUM, master, MPI_COMM_WORLD);
+        } else
+#endif
+        {
+          memcpy(reference_prb[step], reference_row.data(),
+              (Norb+3)*sizeof(double));
+        }
       }
       if(step < nwf) {
         if(reference_grid_split) {
@@ -1355,6 +1444,13 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     free1d(reference_hamiltonian_work);
     free1d(reference_energy);
     free1d(reference_molecule_occupied);
+  }
+  if(reference_control && myid==master) {
+    printf("#SEP_MB_TIMING reference_seconds=%.6f reference_mpi=%d local_fock=%d\n",
+        std::chrono::duration<double>(std::chrono::steady_clock::now()-
+            reference_started).count(), reference_mpi ? 1 : 0,
+        reference_local_fock);
+    fflush(stdout);
   }
   if(reference_control) bzero(prb[0], (Norb+3)*sizeof(double));
 
@@ -2243,6 +2339,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             reference_state_count, reference_max_states,
             reference_fock_states, reference_split_operator ? 1 : 0,
             reference_grid_split ? 1 : 0, path_local_basis ? 1 : 0);
+    fprintf(FL, "#distributed reference: enabled=%d local_fock=%d\n",
+            reference_mpi ? 1 : 0, reference_local_fock);
     fprintf(FL, "#backward DP: all_order=%d replicas_min=%d replicas_max=%d replica_power=%1.8e replicas_per_forward=%lld\n",
             all_order_back_dp ? 1 : 0, back_replicas_min, back_replicas,
             back_replica_power, back_replicas_per_forward);

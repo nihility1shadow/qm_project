@@ -1,0 +1,80 @@
+{
+  "regressions": [
+    {
+      "jobs": [
+        647609,
+        647606
+      ],
+      "max_abs_difference": 0.0
+    },
+    {
+      "jobs": [
+        647606,
+        647607
+      ],
+      "max_abs_difference": 0.0
+    },
+    {
+      "jobs": [
+        647610,
+        647611
+      ],
+      "max_abs_difference": 2.220446049250313e-15
+    }
+  ],
+  "resources": [
+    {
+      "job": 647609,
+      "wall_seconds": 11.21,
+      "max_rank_peak_mib": 12.546875,
+      "sum_rank_peak_mib": null,
+      "reference_seconds": null,
+      "max_particle_error": 1.7763568394002505e-15,
+      "finite": true
+    },
+    {
+      "job": 647606,
+      "wall_seconds": 14.0,
+      "max_rank_peak_mib": 12.55859375,
+      "sum_rank_peak_mib": 37.546875,
+      "reference_seconds": 10.695539,
+      "max_particle_error": 1.7763568394002505e-15,
+      "finite": true
+    },
+    {
+      "job": 647607,
+      "wall_seconds": 6.01,
+      "max_rank_peak_mib": 9.4375,
+      "sum_rank_peak_mib": 37.6015625,
+      "reference_seconds": 2.59175,
+      "max_particle_error": 1.7763568394002505e-15,
+      "finite": true
+    },
+    {
+      "job": 647608,
+      "wall_seconds": 34.17,
+      "max_rank_peak_mib": 144.51171875,
+      "sum_rank_peak_mib": 9134.28515625,
+      "reference_seconds": 30.435742,
+      "max_particle_error": 7.105427357601002e-15,
+      "finite": true
+    }
+  ],
+  "small_system_qm": {
+    "reference": "E:\\project_qm\\scan_v093_poisson_t2500_20260822\\pilots\\qm_646419_eta03\\ahm-qm-s10-n5.dat",
+    "active_orbitals": [
+      0,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "tmax": 100.0,
+    "Ntraj": 1000,
+    "Q_active": 2502990.7468289863,
+    "min_active_orbital_Q": 2282507.4748221766,
+    "error_rms_active": 8.196043298338e-14,
+    "max_abs_error_all": 3.476108290101365e-13
+  }
+}
