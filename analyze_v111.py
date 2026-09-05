@@ -84,3 +84,31 @@ fig.suptitle("Identical 10/5 test: 100 a.u., 1,000 paths, 4 ranks; output differ
 fig.tight_layout();fig.savefig(FIG/"regression_resources.png");plt.close(fig)
 (OUT/"stage1_validation.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
 print(json.dumps(report,indent=2))
+
+# Stage 2: compact metadata and exact-zero work elimination.
+if all((OUT/str(j)).exists() for j in [647618,647619,647620,647621]):
+    second = {"regressions": [], "resources": []}
+    for a,b in [(647607,647618),(647608,647619),(647620,647621),
+                (647634,647635),(647636,647637)]:
+        x,_ = read_run(a); y,_ = read_run(b)
+        difference = float(np.abs(x-y).max())
+        assert difference < 2e-12
+        second["regressions"].append({"jobs":[a,b],"max_abs_difference":difference})
+    for job in [647618,647619,647620,647621]:
+        _,resource=read_run(job)
+        second["resources"].append(resource)
+    before=report["resources"][-1]; after=second["resources"][1]
+    fig,axes=plt.subplots(1,3,figsize=(12,3.8))
+    labels=["v1.11 sets","v1.12 compact"]
+    for ax,field,title in zip(axes,
+        ["wall_seconds","max_rank_peak_mib","sum_rank_peak_mib"],
+        ["Wall time (seconds)","Maximum rank peak (MiB)","Sum of rank peaks (GiB)"]):
+        values=[before[field],after[field]]
+        if field=="sum_rank_peak_mib":values=[x/1024 for x in values]
+        bars=ax.bar(labels,values,color=["#96a6b4","#338b80"],width=.58)
+        for bar,value in zip(bars,values):
+            ax.text(bar.get_x()+bar.get_width()/2,value,f"{value:.2f}",ha="center",va="bottom")
+        ax.set_ylim(0,max(values)*1.23);ax.set_title(title);ax.grid(axis="y",alpha=.15)
+    fig.suptitle("30 orbitals / 15 electrons | 52,656 reference states | 10 a.u. | 100 paths | 64 ranks")
+    fig.tight_layout();fig.savefig(FIG/"compact_reference_resources.png");plt.close(fig)
+    (OUT/"stage2_validation.json").write_text(json.dumps(second,indent=2))

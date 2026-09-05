@@ -1,0 +1,77 @@
+{
+  "regressions": [
+    {
+      "jobs": [
+        647607,
+        647618
+      ],
+      "max_abs_difference": 0.0
+    },
+    {
+      "jobs": [
+        647608,
+        647619
+      ],
+      "max_abs_difference": 0.0
+    },
+    {
+      "jobs": [
+        647620,
+        647621
+      ],
+      "max_abs_difference": 0.0
+    },
+    {
+      "jobs": [
+        647634,
+        647635
+      ],
+      "max_abs_difference": 0.0
+    },
+    {
+      "jobs": [
+        647636,
+        647637
+      ],
+      "max_abs_difference": 0.0
+    }
+  ],
+  "resources": [
+    {
+      "job": 647618,
+      "wall_seconds": 3.81,
+      "max_rank_peak_mib": 9.29296875,
+      "sum_rank_peak_mib": 37.015625,
+      "reference_seconds": 2.772296,
+      "max_particle_error": 1.7763568394002505e-15,
+      "finite": true
+    },
+    {
+      "job": 647619,
+      "wall_seconds": 26.1,
+      "max_rank_peak_mib": 41.06640625,
+      "sum_rank_peak_mib": 2523.01953125,
+      "reference_seconds": 24.808413,
+      "max_particle_error": 7.105427357601002e-15,
+      "finite": true
+    },
+    {
+      "job": 647620,
+      "wall_seconds": 20.22,
+      "max_rank_peak_mib": 8.984375,
+      "sum_rank_peak_mib": 35.38671875,
+      "reference_seconds": 3.326607,
+      "max_particle_error": 2.6645352591003757e-15,
+      "finite": true
+    },
+    {
+      "job": 647621,
+      "wall_seconds": 18.62,
+      "max_rank_peak_mib": 8.98046875,
+      "sum_rank_peak_mib": 35.3828125,
+      "reference_seconds": 3.201916,
+      "max_particle_error": 2.6645352591003757e-15,
+      "finite": true
+    }
+  ]
+}

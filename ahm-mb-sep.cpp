@@ -14,6 +14,8 @@
 #include <map>
 #include <sys/resource.h>
 #include <chrono>
+#include <unordered_map>
+#include <unordered_set>
 
 #define _YYY_REALSPACE_AV_
 
@@ -141,6 +143,46 @@ vector<set<int> > sepmb_generate_reference_states(
       }
     }
     frontier.swap(next);
+  }
+  return states;
+}
+
+// Preserve the original BFS and ascending-orbital order, but avoid
+// allocating one tree node per occupied orbital in every reference state.
+unsigned long long sepmb_state_mask(const set<int>& state) {
+  unsigned long long mask = 0;
+  for(int orbital : state) mask |= 1ULL << orbital;
+  return mask;
+}
+
+vector<unsigned long long> sepmb_generate_reference_masks(
+    const int Norb, const set<int>& initial, const int distance) {
+  vector<unsigned long long> states;
+  if(distance < 0) return states;
+  if(Norb > 64) abort();
+  const unsigned long long initial_mask = sepmb_state_mask(initial);
+  const long long count = sepmb_reference_state_count(
+      Norb, initial.size(), (initial_mask&1ULL) != 0, distance);
+  states.reserve((size_t)count);
+  unordered_set<unsigned long long> seen;
+  seen.reserve((size_t)count);
+  states.push_back(initial_mask);
+  seen.insert(initial_mask);
+  size_t begin = 0, end = 1;
+  for(int depth=0; depth<2*distance+1 && begin<end; depth++) {
+    for(size_t k=begin; k<end; k++) {
+      const unsigned long long current = states[k];
+      for(int orbital=1; orbital<Norb; orbital++) {
+        const unsigned long long bit = 1ULL << orbital;
+        const bool allowed = (current&1ULL)
+            ? !(current&bit) : (current&bit) != 0;
+        if(!allowed) continue;
+        const unsigned long long target = current ^ 1ULL ^ bit;
+        if(seen.insert(target).second) states.push_back(target);
+      }
+    }
+    begin = end;
+    end = states.size();
   }
   return states;
 }
@@ -917,6 +959,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   if(reference_distance < -1) reference_distance = -1;
   if(reference_distance > 4) reference_distance = 4;
   const int requested_reference_distance = reference_distance;
+  const char *env_skip_zero_reference = getenv("SEP_MB_SKIP_ZERO_REFERENCE");
+  const bool skip_zero_reference = !env_skip_zero_reference ||
+      atoi(env_skip_zero_reference) != 0;
+  unsigned long long skipped_zero_reference = 0;
   const char *env_reference_mpi = getenv("SEP_MB_REFERENCE_MPI");
   const bool requested_reference_mpi = env_reference_mpi &&
       atoi(env_reference_mpi) != 0;
@@ -1176,14 +1222,22 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       Jmax     = nstep + 1;
   csproj(wgt_init*Lfct, alp_init, wgt_init, alp_init, excited0, S0, prb[0]);
   vector<set<int> > reference_states;
+  vector<unsigned long long> reference_masks;
+  const bool compact_reference = path_local_basis && Norb <= 64;
   while(reference_distance >= 0) {
     if(path_local_basis) {
       const long long expected_states = sepmb_reference_state_count(
           Norb, Nel, S0.find(0) != S0.end(), reference_distance);
       if(expected_states <= reference_max_states) {
-        reference_states = sepmb_generate_reference_states(
-            Norb, S0, reference_distance);
-        if((long long)reference_states.size() != expected_states) {
+        if(compact_reference)
+          reference_masks = sepmb_generate_reference_masks(
+              Norb, S0, reference_distance);
+        else
+          reference_states = sepmb_generate_reference_states(
+              Norb, S0, reference_distance);
+        const size_t generated_count = compact_reference
+            ? reference_masks.size() : reference_states.size();
+        if((long long)generated_count != expected_states) {
           cerr<<"path-local reference-state count mismatch.\n";
           abort();
         }
@@ -1205,8 +1259,12 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     reference_states.clear();
     reference_distance--;
   }
-  if(reference_distance < 0) reference_states.clear();
-  const int reference_state_count = (int)reference_states.size();
+  if(reference_distance < 0) {
+    reference_states.clear();
+    reference_masks.clear();
+  }
+  const int reference_state_count = (int)(compact_reference
+      ? reference_masks.size() : reference_states.size());
   const bool reference_control = !deterministic_fock &&
       reference_distance >= 0 && reference_state_count > 0 &&
       reference_state_count <= reference_max_states;
@@ -1232,16 +1290,25 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   const auto reference_started = std::chrono::steady_clock::now();
   if(reference_control && (reference_mpi || myid==master)) {
     map<set<int>, int> reference_index;
+    unordered_map<unsigned long long, int> reference_mask_index;
+    if(compact_reference) reference_mask_index.reserve(reference_state_count);
     for(int s=0; s<reference_state_count; s++) {
-      reference_index[reference_states[s]] = s;
+      if(compact_reference) reference_mask_index[reference_masks[s]] = s;
+      else reference_index[reference_states[s]] = s;
     }
-    const map<set<int>, int>::const_iterator initial_position =
-        reference_index.find(S0);
-    if(initial_position == reference_index.end()) {
+    const auto find_reference = [&](const set<int>& state) -> int {
+      if(compact_reference) {
+        const auto position = reference_mask_index.find(sepmb_state_mask(state));
+        return position == reference_mask_index.end() ? -1 : position->second;
+      }
+      const auto position = reference_index.find(state);
+      return position == reference_index.end() ? -1 : position->second;
+    };
+    const int reference_initial = find_reference(S0);
+    if(reference_initial < 0) {
       cerr<<"failed to locate the initial determinant in reference subspace.\n";
       abort();
     }
-    const int reference_initial = initial_position->second;
     vector<vector<pair<int, dcomplex> > > reference_transitions(
         reference_state_count);
     double *reference_energy = array1d<double>(reference_state_count);
@@ -1249,7 +1316,14 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         array1d<int>(reference_state_count);
 
     for(int source=0; source<reference_state_count; source++) {
-      const set<int>& basis_state = reference_states[source];
+      set<int> compact_state;
+      if(compact_reference) {
+        for(int orbital=0; orbital<Norb; orbital++)
+          if(reference_masks[source] & (1ULL<<orbital))
+            compact_state.insert(orbital);
+      }
+      const set<int>& basis_state = compact_reference
+          ? compact_state : reference_states[source];
       reference_molecule_occupied[source] =
           basis_state.find(0) != basis_state.end();
       for(int orbital : basis_state) {
@@ -1262,16 +1336,15 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           set<int> target_state = basis_state;
           target_state.erase(0);
           target_state.insert(orbital);
-          const map<set<int>, int>::const_iterator target =
-              reference_index.find(target_state);
-          if(target == reference_index.end()) continue;
+          const int target = find_reference(target_state);
+          if(target < 0) continue;
           int position = 0;
           set<int>::const_iterator occupied = target_state.begin();
           for(; occupied != target_state.end() && *occupied != orbital;
               ++occupied, ++position) {}
           if(occupied == target_state.end()) abort();
           reference_transitions[source].push_back(
-              make_pair(target->second, eo[position%2]*cpl[orbital]));
+              make_pair(target, eo[position%2]*cpl[orbital]));
         }
       } else {
         for(int orbital : basis_state) {
@@ -1284,11 +1357,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           set<int> target_state = basis_state;
           target_state.erase(orbital);
           target_state.insert(0);
-          const map<set<int>, int>::const_iterator target =
-              reference_index.find(target_state);
-          if(target == reference_index.end()) continue;
+          const int target = find_reference(target_state);
+          if(target < 0) continue;
           reference_transitions[source].push_back(
-              make_pair(target->second, eo[position%2]*cpl[orbital]));
+              make_pair(target, eo[position%2]*cpl[orbital]));
         }
       }
     }
@@ -1364,9 +1436,16 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             }
           }
           reference_norm += determinant_probability;
-          for(int orbital : reference_states[s]) {
-            reference_row[3+orbital] +=
-                determinant_probability;
+          if(compact_reference) {
+            unsigned long long occupied = reference_masks[s];
+            while(occupied) {
+              const int orbital = __builtin_ctzll(occupied);
+              reference_row[3+orbital] += determinant_probability;
+              occupied &= occupied-1;
+            }
+          } else {
+            for(int orbital : reference_states[s])
+              reference_row[3+orbital] += determinant_probability;
           }
         }
         reference_row[0] = Nel*reference_norm;
@@ -1446,6 +1525,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     free1d(reference_molecule_occupied);
   }
   if(reference_control && myid==master) {
+    printf("#SEP_MB_REFERENCE_ENCODING compact=%d bytes_per_state=%d\n",
+        compact_reference ? 1 : 0, compact_reference ? 8 : -1);
     printf("#SEP_MB_TIMING reference_seconds=%.6f reference_mpi=%d local_fock=%d\n",
         std::chrono::duration<double>(std::chrono::steady_clock::now()-
             reference_started).count(), reference_mpi ? 1 : 0,
@@ -1454,6 +1535,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   }
   if(reference_control) bzero(prb[0], (Norb+3)*sizeof(double));
 
+  const auto sampling_started = std::chrono::steady_clock::now();
   // Changing the Poisson rate only changes variance. Each sampled jump is
   // compensated by inv_rate_scale so the expected propagator is unchanged.
   const double lambda          = abs(cpl[1]),
@@ -2156,6 +2238,16 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
           cout<<"    the backward path, t = "<<j<<endl;
 #endif
 
+          // A path with at most 2D+1 star hops cannot leave distance D.
+          // The pair has exactly zero residual when the forward path also
+          // stayed inside. Keep all random draws above, skipping only
+          // deterministic propagation, so seeded sampling is unchanged.
+          if(skip_zero_reference && forward_reference_path &&
+              nj_back <= 2*reference_distance+1) {
+            skipped_zero_reference++;
+            continue;
+          }
+
           int offset = 0;
           alp     = alp_init;
           wgt     = wgt_init;
@@ -2295,7 +2387,16 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   free1d(jcl);
 #endif
 
+#ifdef _YYY_MPI_
+  unsigned long long global_skipped_zero_reference = 0;
+  MPI_Reduce(&skipped_zero_reference, &global_skipped_zero_reference, 1,
+      MPI_UNSIGNED_LONG_LONG, MPI_SUM, master, MPI_COMM_WORLD);
+  if(myid==master) skipped_zero_reference = global_skipped_zero_reference;
+#endif
   if(myid==master) {
+    printf("#SEP_MB_TIMING sampling_seconds=%.6f skipped_zero_reference=%llu\n",
+        std::chrono::duration<double>(std::chrono::steady_clock::now()-
+            sampling_started).count(), skipped_zero_reference);
     char fnm[256];
     sprintf(fnm, "ahm-sepmb-s%d-n%d-%d.dat", Norb, Nel, ntraj);
     FILE *FL = fopen(fnm, "w");
@@ -2339,8 +2440,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             reference_state_count, reference_max_states,
             reference_fock_states, reference_split_operator ? 1 : 0,
             reference_grid_split ? 1 : 0, path_local_basis ? 1 : 0);
-    fprintf(FL, "#distributed reference: enabled=%d local_fock=%d\n",
-            reference_mpi ? 1 : 0, reference_local_fock);
+    fprintf(FL, "#distributed reference: enabled=%d local_fock=%d compact_states=%d\n",
+            reference_mpi ? 1 : 0, reference_local_fock,
+            compact_reference ? 1 : 0);
     fprintf(FL, "#backward DP: all_order=%d replicas_min=%d replicas_max=%d replica_power=%1.8e replicas_per_forward=%lld\n",
             all_order_back_dp ? 1 : 0, back_replicas_min, back_replicas,
             back_replica_power, back_replicas_per_forward);
