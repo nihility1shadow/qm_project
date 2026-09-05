@@ -187,6 +187,23 @@ vector<unsigned long long> sepmb_generate_reference_masks(
   return states;
 }
 
+// Star hopping has a real coupling. Count occupied bath orbitals below
+// the hopping orbital for the fermion sign, in either hopping direction.
+template<class Visitor>
+void sepmb_visit_mask_reference_edges(const int Norb,
+    const unsigned long long current,
+    const unordered_map<unsigned long long, int>& index,
+    const double *coupling, Visitor visit) {
+  for(int orbital=1; orbital<Norb; orbital++) {
+    const unsigned long long bit = 1ULL << orbital;
+    if(((current&1ULL) != 0) == ((current&bit) != 0)) continue;
+    const auto position = index.find(current ^ 1ULL ^ bit);
+    if(position == index.end()) continue;
+    const int parity = __builtin_popcountll(current & (bit-1ULL) & ~1ULL) & 1;
+    visit(position->second, (parity ? -1.0 : 1.0)*coupling[orbital]);
+  }
+}
+
 double sepmb_kondo_degeneracy(const int Norb, const int Nel,
     const int excited0, const int nj, const int d) {
   const int Nvac = Norb - Nel;
@@ -496,6 +513,41 @@ struct SepmbFockContext {
   double energy_origin;
   dcomplex *hamiltonian_work;
 };
+struct SepmbReferenceTransitions {
+  vector<size_t> offsets;
+  vector<int> sources; // Incoming edges, ordered by source to preserve summation.
+  vector<double> couplings;
+};
+
+template<class Generator>
+SepmbReferenceTransitions sepmb_build_reference_transitions(
+    const int nstate, const Generator& visit_edges) {
+  SepmbReferenceTransitions graph;
+  graph.offsets.assign(nstate+1, 0);
+  for(int source=0; source<nstate; source++) {
+    visit_edges(source, [&](int target, double) {
+      if(target < 0 || target >= nstate) abort();
+      graph.offsets[target+1]++;
+    });
+  }
+  for(int target=0; target<nstate; target++) graph.offsets[target+1] += graph.offsets[target];
+  graph.sources.resize(graph.offsets.back());
+  graph.couplings.resize(graph.offsets.back());
+  vector<size_t> cursor = graph.offsets;
+  for(int source=0; source<nstate; source++) {
+    visit_edges(source, [&](int target, double coupling) {
+      if(target < 0 || target >= nstate) abort();
+      const size_t edge = cursor[target]++;
+      if(edge >= graph.offsets[target+1]) abort();
+      graph.sources[edge] = source;
+      graph.couplings[edge] = coupling;
+    });
+  }
+  for(int target=0; target<nstate; target++)
+    if(cursor[target] != graph.offsets[target+1]) abort();
+  return graph;
+}
+
 struct SepmbReferenceContext {
   int nstate;
   int nfock;
@@ -503,14 +555,13 @@ struct SepmbReferenceContext {
   int total_fock;
   bool distributed;
   vector<dcomplex> halo;
-  const vector<vector<pair<int, dcomplex> > > *transitions;
+  const SepmbReferenceTransitions *transitions;
   const double *electronic_energy;
   const int *molecule_occupied;
   double frequency;
   double half_displacement;
   double constant_shift;
   double energy_origin;
-  dcomplex *hamiltonian_work;
   int operator_part; // 0: H, 1: H0, 2: H1, 3: T, 4: V+electronic
 };
 
@@ -542,6 +593,23 @@ const dcomplex *sepmb_reference_row(const SepmbReferenceContext& context,
   return state+n*context.nstate;
 }
 
+// Incoming-edge CSR avoids a scattered H*psi temporary. Edges are filled
+// in ascending source order, exactly matching the old scatter accumulation.
+dcomplex sepmb_reference_hopping(const SepmbReferenceContext& context,
+    const dcomplex *row, const int target) {
+  const SepmbReferenceTransitions& graph = *context.transitions;
+  dcomplex value = 0.0;
+  for(size_t edge=graph.offsets[target]; edge<graph.offsets[target+1]; edge++) {
+    const dcomplex amplitude = row[graph.sources[edge]];
+    // The component check avoids hypot for ordinary amplitudes, while
+    // retaining the original 1.e-300 absolute-value cutoff near zero.
+    if(fabs(real(amplitude)) <= 1.e-300 && fabs(imag(amplitude)) <= 1.e-300 &&
+        abs(amplitude) <= 1.e-300) continue;
+    value += graph.couplings[edge]*amplitude;
+  }
+  return value;
+}
+
 void sepmb_reference_rhs(const int dimension, const double,
     const double accumulator_factor, const double derivative_factor,
     void *parameters,
@@ -549,24 +617,15 @@ void sepmb_reference_rhs(const int dimension, const double,
   SepmbReferenceContext *context = (SepmbReferenceContext *)parameters;
   const int nstate = context->nstate,
             nfock = context->nfock;
-  if(dimension != nstate*nfock) abort();
-  dcomplex *hpsi = context->hamiltonian_work;
-  bzero(hpsi, dimension*sizeof(dcomplex));
+  if(dimension != nstate*nfock || state == derivative) abort();
   if(context->operator_part != 2) sepmb_reference_exchange(*context, state);
 
-  if(context->operator_part == 0 || context->operator_part == 2) {
-  for(int n=0; n<nfock; n++) {
-    const int gn = n+context->fock_begin;
-    const int base = n*nstate;
-    for(int source=0; source<nstate; source++) {
-      const dcomplex amplitude = state[base+source];
-      if(abs(amplitude) <= 1.e-300) continue;
-      for(const pair<int, dcomplex>& edge :
-          (*context->transitions)[source]) {
-        hpsi[base+edge.first] += edge.second*amplitude;
-      }
+  if(context->operator_part == 2) {
+    for(int n=0; n<nfock; n++) for(int target=0; target<nstate; target++) {
+      const int index = n*nstate+target;
+      const dcomplex value = sepmb_reference_hopping(*context, state+n*nstate, target);
+      derivative[index] = accumulator_factor*derivative[index]-I*derivative_factor*value;
     }
-  }
   }
   if(context->operator_part == 0 || context->operator_part == 1) {
   for(int n=0; n<nfock; n++) {
@@ -581,10 +640,12 @@ void sepmb_reference_rhs(const int dimension, const double,
       const double linear = context->molecule_occupied[s]
           ? -context->frequency*context->half_displacement
           : context->frequency*context->half_displacement;
-      dcomplex value = hpsi[index]+diagonal*state[index];
+      dcomplex value = (context->operator_part == 0
+          ? sepmb_reference_hopping(*context, state+n*nstate, s) : dcomplex(0.0))
+          +diagonal*state[index];
       if(gn > 0) value += linear*root_down*sepmb_reference_row(*context, state, n-1)[s];
       if(gn+1 < context->total_fock) value += linear*root_up*sepmb_reference_row(*context, state, n+1)[s];
-      hpsi[index] = value;
+      derivative[index] = accumulator_factor*derivative[index]-I*derivative_factor*value;
     }
   }
   }
@@ -600,7 +661,7 @@ void sepmb_reference_rhs(const int dimension, const double,
         dcomplex value = diagonal*state[index];
         if(gn > 1) value += lower_two*sepmb_reference_row(*context, state, n-2)[s];
         if(gn+2 < context->total_fock) value += upper_two*sepmb_reference_row(*context, state, n+2)[s];
-        hpsi[index] = value;
+        derivative[index] = accumulator_factor*derivative[index]-I*derivative_factor*value;
       }
     }
   }
@@ -622,13 +683,9 @@ void sepmb_reference_rhs(const int dimension, const double,
         if(gn+2 < context->total_fock) value += upper_two*sepmb_reference_row(*context, state, n+2)[s];
         if(gn > 0) value += linear*root_down*sepmb_reference_row(*context, state, n-1)[s];
         if(gn+1 < context->total_fock) value += linear*root_up*sepmb_reference_row(*context, state, n+1)[s];
-        hpsi[index] = value;
+        derivative[index] = accumulator_factor*derivative[index]-I*derivative_factor*value;
       }
     }
-  }
-  for(int index=0; index<dimension; index++) {
-    derivative[index] = accumulator_factor*derivative[index]
-        -I*derivative_factor*hpsi[index];
   }
 }
 
@@ -1272,7 +1329,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       ? array2d<double>(nwf+1, Norb+3) : NULL;
 
   if(myid==master) {
-    const long double reference_work_bytes = 3.0L*reference_state_count*
+    const long double reference_work_bytes = 2.0L*reference_state_count*
         reference_fock_states*sizeof(dcomplex);
     printf("#SEP_MB_REFERENCE requested_distance=%d selected_distance=%d active=%d states=%d max_states=%d fock_states=%d estimated_work_mib=%1.6Lf\n",
            requested_reference_distance, reference_distance,
@@ -1309,60 +1366,71 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       cerr<<"failed to locate the initial determinant in reference subspace.\n";
       abort();
     }
-    vector<vector<pair<int, dcomplex> > > reference_transitions(
-        reference_state_count);
     double *reference_energy = array1d<double>(reference_state_count);
-    int *reference_molecule_occupied =
-        array1d<int>(reference_state_count);
+    int *reference_molecule_occupied = array1d<int>(reference_state_count);
 
-    for(int source=0; source<reference_state_count; source++) {
-      set<int> compact_state;
+    // Two passes allocate exactly the number of edges. No per-row allocation
+    // and no temporary set construction on the compact-mask path.
+    const auto visit_edges = [&](int source, const auto& visit) {
       if(compact_reference) {
-        for(int orbital=0; orbital<Norb; orbital++)
-          if(reference_masks[source] & (1ULL<<orbital))
-            compact_state.insert(orbital);
+        sepmb_visit_mask_reference_edges(Norb, reference_masks[source],
+            reference_mask_index, cpl, visit);
+        return;
       }
-      const set<int>& basis_state = compact_reference
-          ? compact_state : reference_states[source];
-      reference_molecule_occupied[source] =
-          basis_state.find(0) != basis_state.end();
-      for(int orbital : basis_state) {
-        reference_energy[source] += En[orbital];
-      }
-
-      if(reference_molecule_occupied[source]) {
+      const set<int>& basis_state = reference_states[source];
+      if(basis_state.count(0)) {
         for(int orbital=1; orbital<Norb; orbital++) {
-          if(basis_state.find(orbital) != basis_state.end()) continue;
+          if(basis_state.count(orbital)) continue;
           set<int> target_state = basis_state;
           target_state.erase(0);
           target_state.insert(orbital);
           const int target = find_reference(target_state);
           if(target < 0) continue;
           int position = 0;
-          set<int>::const_iterator occupied = target_state.begin();
-          for(; occupied != target_state.end() && *occupied != orbital;
-              ++occupied, ++position) {}
-          if(occupied == target_state.end()) abort();
-          reference_transitions[source].push_back(
-              make_pair(target, eo[position%2]*cpl[orbital]));
+          for(int occupied : target_state) {
+            if(occupied == orbital) break;
+            position++;
+          }
+          visit(target, eo[position%2]*cpl[orbital]);
         }
       } else {
+        int position = 0;
         for(int orbital : basis_state) {
-          if(orbital == 0) continue;
-          int position = 0;
-          set<int>::const_iterator occupied = basis_state.begin();
-          for(; occupied != basis_state.end() && *occupied != orbital;
-              ++occupied, ++position) {}
-          if(occupied == basis_state.end()) abort();
           set<int> target_state = basis_state;
           target_state.erase(orbital);
           target_state.insert(0);
           const int target = find_reference(target_state);
-          if(target < 0) continue;
-          reference_transitions[source].push_back(
-              make_pair(target, eo[position%2]*cpl[orbital]));
+          if(target >= 0) visit(target, eo[position%2]*cpl[orbital]);
+          position++;
         }
       }
+    };
+    for(int source=0; source<reference_state_count; source++) {
+      if(compact_reference) {
+        unsigned long long occupied = reference_masks[source];
+        reference_molecule_occupied[source] = (occupied&1ULL) != 0;
+        while(occupied) {
+          const int orbital = __builtin_ctzll(occupied);
+          reference_energy[source] += En[orbital];
+          occupied &= occupied-1ULL;
+        }
+      } else {
+        reference_molecule_occupied[source] = reference_states[source].count(0);
+        for(int orbital : reference_states[source]) reference_energy[source] += En[orbital];
+      }
+    }
+    const SepmbReferenceTransitions reference_transitions =
+        sepmb_build_reference_transitions(reference_state_count, visit_edges);
+    const size_t edge_count = reference_transitions.sources.size();
+    // Index maps are needed only during construction, not propagation.
+    reference_index.clear();
+    reference_mask_index.clear();
+    reference_mask_index.rehash(0);
+    if(myid==master) {
+      printf("#SEP_MB_REFERENCE_GRAPH storage=csr-real-gather edges=%zu metadata_mib=%.6f\n",
+          edge_count, (edge_count*(sizeof(int)+sizeof(double))+
+              reference_transitions.offsets.size()*sizeof(size_t))/(1024.0*1024.0));
+      fflush(stdout);
     }
 
     const double displacement = sqrt(0.5*mass*freq)*delx,
@@ -1374,9 +1442,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         reference_state_count*reference_local_fock;
     dcomplex *reference_wavefunction =
                  array1d<dcomplex>(reference_dimension),
-             *reference_work = array1d<dcomplex>(reference_dimension),
-             *reference_hamiltonian_work =
-                 array1d<dcomplex>(reference_dimension);
+             *reference_work = array1d<dcomplex>(reference_dimension);
     dcomplex coefficient =
         wgt_init*exp(-0.5*norm(centered_alpha));
     for(int n=0; n<reference_fock_states; n++) {
@@ -1404,8 +1470,6 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     reference_context.constant_shift = constant_shift;
     reference_context.energy_origin =
         reference_energy[reference_initial]+0.5*freq;
-    reference_context.hamiltonian_work =
-        reference_hamiltonian_work;
     reference_context.operator_part = 0;
 
     for(int step=0; step<=nwf; step++) {
@@ -1520,7 +1584,6 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
 
     free1d(reference_wavefunction);
     free1d(reference_work);
-    free1d(reference_hamiltonian_work);
     free1d(reference_energy);
     free1d(reference_molecule_occupied);
   }
@@ -2415,7 +2478,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         : (reference_control
           ? (reference_grid_split
             ? (path_local_basis
-              ? "#PATCH_CHECK: SepMBpoisson v1.10 path-local nested-split control active\n"
+              ? "#PATCH_CHECK: SepMBpoisson v1.13 real-CSR path-local nested-split control active\n"
               : "#PATCH_CHECK: SepMBpoisson v1.09 nested-split path-control active\n")
             : (reference_split_operator
               ? "#PATCH_CHECK: SepMBpoisson v1.08 split-operator path-control active\n"
@@ -2458,9 +2521,11 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
             16.0*(nwf+1.0)*(nwf+2.0));
     const int phase_memory_bits = nstep > 1
         ? 1+(int)ceil(log((double)nstep)/log(2.0)) : 1;
-    fprintf(FL, "#electronic-phase memory: mode=binary-power-table phase_table_bytes=%1.0f phase_bits=%d legacy_time_state_table_bytes=%1.0f\n",
-            (double)(1.0L*sizeof(dcomplex)*hilbert_state_estimate*phase_memory_bits),
-            phase_memory_bits,
+    fprintf(FL, "#electronic-phase memory: mode=%s phase_table_bytes=%1.0f phase_bits=%d legacy_time_state_table_bytes=%1.0f\n",
+            path_local_basis ? "path-local" : "binary-power-table",
+            path_local_basis ? 0.0 :
+              (double)(1.0L*sizeof(dcomplex)*hilbert_state_estimate*phase_memory_bits),
+            path_local_basis ? 0 : phase_memory_bits,
             (double)(1.0L*sizeof(dcomplex)*(nstep+1.0)*hilbert_state_estimate));
     double *rlt = array1d<double>(Norb+3);
     int il = 0;

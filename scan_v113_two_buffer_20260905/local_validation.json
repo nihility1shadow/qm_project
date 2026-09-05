@@ -1,0 +1,16 @@
+{
+  "status": "local operator regression passed; full MPI build and long validation pending remote authorization",
+  "reference": "v1.12-compact-reference",
+  "graph_order_cases": 652,
+  "signed_graph_cases": 354,
+  "directed_edges_checked": 44148,
+  "operator_comparisons_including_uneven_slices": 525,
+  "max_operator_abs_difference": 0.0,
+  "reference_work_vectors_before": 3,
+  "reference_work_vectors_candidate": 2,
+  "high_order_reference_states": 715136,
+  "oscillator_levels": 384,
+  "old_global_work_vectors_gib": 12.276123046875,
+  "candidate_global_work_vectors_gib": 8.18408203125,
+  "memory_notice": "These are formula-based work-vector bytes only, excluding halo, graph, state metadata, sampler and process overhead. They are not measured process RSS."
+}
