@@ -1,0 +1,140 @@
+{
+  "notice": "Code-feature inventory, not a matched runtime benchmark. Presence of a flag does not prove correctness or scalability.",
+  "releases": [
+    {
+      "tag": "v0.92-lowmem",
+      "commit": "8760cb928930304ae8882c12044c3dfae764db87",
+      "path_local_option": false,
+      "bounded_reference_option": false,
+      "mpi_reference_option": false,
+      "rqmc_option": false,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v0.93-auto-lowmem",
+      "commit": "2b6f45d72d83326ee74f5c888791054e9c0aea8b",
+      "path_local_option": false,
+      "bounded_reference_option": false,
+      "mpi_reference_option": false,
+      "rqmc_option": false,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v0.93-poisson-t2500-50m",
+      "commit": "1f21c7c4a3229552c8a61cc70af3871d24fbe7c2",
+      "path_local_option": false,
+      "bounded_reference_option": false,
+      "mpi_reference_option": false,
+      "rqmc_option": false,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v0.94-poisson-short-screen",
+      "commit": "18aaa6e2253f5cbd41252b1d242b79f9f819d4fb",
+      "path_local_option": false,
+      "bounded_reference_option": false,
+      "mpi_reference_option": false,
+      "rqmc_option": false,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v0.96-poisson-rate-orbital-strata",
+      "commit": "137ea8de0710098369fc5f866b9c246cabde770f",
+      "path_local_option": false,
+      "bounded_reference_option": false,
+      "mpi_reference_option": false,
+      "rqmc_option": false,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v0.98-stratified-kondo",
+      "commit": "4c66d15302883e9fe788dbba8b06fdd3f73aa917",
+      "path_local_option": false,
+      "bounded_reference_option": false,
+      "mpi_reference_option": false,
+      "rqmc_option": false,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v0.99-poisson-reference-control",
+      "commit": "c989ca15f9b688553bf775096598c6269f7c2b0a",
+      "path_local_option": false,
+      "bounded_reference_option": true,
+      "mpi_reference_option": false,
+      "rqmc_option": false,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v1.03-poisson-replicated-rqmc",
+      "commit": "80234853c53b5cd5a03668882d0da0c7d3ca30ec",
+      "path_local_option": false,
+      "bounded_reference_option": true,
+      "mpi_reference_option": false,
+      "rqmc_option": true,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v1.09-nested-split-path-control",
+      "commit": "9f2462b5043f6e35934bfa2542e0cbe216191ef9",
+      "path_local_option": false,
+      "bounded_reference_option": true,
+      "mpi_reference_option": false,
+      "rqmc_option": true,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v1.10-path-local-large-space",
+      "commit": "7c446683c110c035d8b08a5e76d9b1dd56bc7bc1",
+      "path_local_option": true,
+      "bounded_reference_option": true,
+      "mpi_reference_option": false,
+      "rqmc_option": true,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v1.11-mpi-reference",
+      "commit": "25da80cc1ddbccd69ac51909b7534aa5343cd5ef",
+      "path_local_option": true,
+      "bounded_reference_option": true,
+      "mpi_reference_option": true,
+      "rqmc_option": true,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v1.12-compact-reference",
+      "commit": "cb9a398779cc70ecf04a9b1f7b5377d49dc944eb",
+      "path_local_option": true,
+      "bounded_reference_option": true,
+      "mpi_reference_option": true,
+      "rqmc_option": true,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v1.13-csr-candidate",
+      "commit": "e254af958696114e34e49edcea309ddaefda6f1a",
+      "path_local_option": true,
+      "bounded_reference_option": true,
+      "mpi_reference_option": true,
+      "rqmc_option": true,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v1.13-two-buffer-cache",
+      "commit": "42d37a3ac8e4999f985428a23a9c442c6a57362c",
+      "path_local_option": true,
+      "bounded_reference_option": true,
+      "mpi_reference_option": true,
+      "rqmc_option": true,
+      "signed_csr_option": false
+    },
+    {
+      "tag": "v1.14-signed-csr",
+      "commit": "53f563fcb9b649c0380598ab3fa6c1b448c4c048",
+      "path_local_option": true,
+      "bounded_reference_option": true,
+      "mpi_reference_option": true,
+      "rqmc_option": true,
+      "signed_csr_option": true
+    }
+  ]
+}

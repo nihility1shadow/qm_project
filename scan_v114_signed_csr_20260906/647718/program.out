@@ -1,0 +1,32 @@
+#AHAU_MPI nproc=64 seed_base=1144001 wc_eV=2.7000000000000002e+00 eta=2.9999999999999999e-07 delE_eV=-1.7194874968839816e+01 nstep=8000 dt=0.5
+#AHAU_BASIS mode=path-local full_determinant_basis=skipped
+#SEP_MB_ALGORITHM fock_mode=0 selected=stochastic-poisson fock_states=384 estimated_fock_work_mib=4.429688 auto_fock_max_mib=256.000000
+#SEP_MB_REFERENCE requested_distance=3 selected_distance=3 active=1 states=246 max_states=4096 fock_states=384 estimated_work_mib=2.882812
+#SEP_MB_REFERENCE_CACHE loaded=1 rows=8001 parameter_key_and_checksum=verified
+#SEP_MB_REFERENCE_ENCODING compact=1 bytes_per_state=8
+#SEP_MB_TIMING reference_seconds=0.044066 reference_mpi=1 local_fock=6
+#SEP_MB_PROGRESS phase=sampling master_completed=0 master_total=15625 elapsed_seconds=0.013817
+#SEP_MB_PROGRESS phase=sampling master_completed=781 master_total=15625 elapsed_seconds=174.489825
+#SEP_MB_PROGRESS phase=sampling master_completed=1562 master_total=15625 elapsed_seconds=350.021003
+#SEP_MB_PROGRESS phase=sampling master_completed=2343 master_total=15625 elapsed_seconds=523.469453
+#SEP_MB_PROGRESS phase=sampling master_completed=3124 master_total=15625 elapsed_seconds=696.335227
+#SEP_MB_PROGRESS phase=sampling master_completed=3905 master_total=15625 elapsed_seconds=870.091517
+#SEP_MB_PROGRESS phase=sampling master_completed=4686 master_total=15625 elapsed_seconds=1043.639964
+#SEP_MB_PROGRESS phase=sampling master_completed=5467 master_total=15625 elapsed_seconds=1217.522782
+#SEP_MB_PROGRESS phase=sampling master_completed=6248 master_total=15625 elapsed_seconds=1389.727289
+#SEP_MB_PROGRESS phase=sampling master_completed=7029 master_total=15625 elapsed_seconds=1562.768349
+#SEP_MB_PROGRESS phase=sampling master_completed=7810 master_total=15625 elapsed_seconds=1737.101706
+#SEP_MB_PROGRESS phase=sampling master_completed=8591 master_total=15625 elapsed_seconds=1910.445519
+#SEP_MB_PROGRESS phase=sampling master_completed=9372 master_total=15625 elapsed_seconds=2083.822228
+#SEP_MB_PROGRESS phase=sampling master_completed=10153 master_total=15625 elapsed_seconds=2258.187296
+#SEP_MB_PROGRESS phase=sampling master_completed=10934 master_total=15625 elapsed_seconds=2431.897482
+#SEP_MB_PROGRESS phase=sampling master_completed=11715 master_total=15625 elapsed_seconds=2606.517962
+#SEP_MB_PROGRESS phase=sampling master_completed=12496 master_total=15625 elapsed_seconds=2779.530632
+#SEP_MB_PROGRESS phase=sampling master_completed=13277 master_total=15625 elapsed_seconds=2952.674334
+#SEP_MB_PROGRESS phase=sampling master_completed=14058 master_total=15625 elapsed_seconds=3125.512005
+#SEP_MB_PROGRESS phase=sampling master_completed=14839 master_total=15625 elapsed_seconds=3299.272115
+#SEP_MB_PROGRESS phase=sampling master_completed=15620 master_total=15625 elapsed_seconds=3472.163456
+#SEP_MB_PROGRESS phase=sampling master_completed=15625 master_total=15625 elapsed_seconds=3473.325394
+#SEP_MB_TIMING sampling_seconds=3812.897192 skipped_zero_reference=30618197428
+#SEP_MB_RESOURCE max_rank_peak_rss_kb=16036 ranks=64
+#SEP_MB_RESOURCE sum_rank_peak_rss_kb=908036 (sum of individual peaks, not simultaneous RSS)

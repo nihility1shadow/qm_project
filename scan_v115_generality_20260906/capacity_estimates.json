@@ -1,0 +1,225 @@
+{
+  "notice": "Exact combinatorial storage estimates, NOT measured RSS. QM wavefunction excludes PES/work/basis. Reference arrays exclude halo, graph copies, metadata and MPI runtime.",
+  "rows": [
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "depth": 0,
+      "full_determinants": 252,
+      "states": 6,
+      "directed_edges": 10,
+      "one_QM_wavefunction_bytes": 4128768,
+      "two_reference_arrays_bytes": 73728,
+      "signed_graph_bytes_per_rank": 96
+    },
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "depth": 1,
+      "full_determinants": 252,
+      "states": 66,
+      "directed_edges": 210,
+      "one_QM_wavefunction_bytes": 4128768,
+      "two_reference_arrays_bytes": 811008,
+      "signed_graph_bytes_per_rank": 1376
+    },
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "depth": 2,
+      "full_determinants": 252,
+      "states": 186,
+      "directed_edges": 810,
+      "one_QM_wavefunction_bytes": 4128768,
+      "two_reference_arrays_bytes": 2285568,
+      "signed_graph_bytes_per_rank": 4736
+    },
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "depth": 3,
+      "full_determinants": 252,
+      "states": 246,
+      "directed_edges": 1210,
+      "one_QM_wavefunction_bytes": 4128768,
+      "two_reference_arrays_bytes": 3022848,
+      "signed_graph_bytes_per_rank": 6816
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "depth": 0,
+      "full_determinants": 155117520,
+      "states": 16,
+      "directed_edges": 30,
+      "one_QM_wavefunction_bytes": 2541445447680,
+      "two_reference_arrays_bytes": 196608,
+      "signed_graph_bytes_per_rank": 256
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "depth": 1,
+      "full_determinants": 155117520,
+      "states": 1696,
+      "directed_edges": 6330,
+      "one_QM_wavefunction_bytes": 2541445447680,
+      "two_reference_arrays_bytes": 20840448,
+      "signed_graph_bytes_per_rank": 38896
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "depth": 2,
+      "full_determinants": 155117520,
+      "states": 52656,
+      "directed_edges": 292980,
+      "one_QM_wavefunction_bytes": 2541445447680,
+      "two_reference_arrays_bytes": 647036928,
+      "signed_graph_bytes_per_rank": 1593176
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "depth": 3,
+      "full_determinants": 155117520,
+      "states": 715136,
+      "directed_edges": 5261580,
+      "one_QM_wavefunction_bytes": 2541445447680,
+      "two_reference_arrays_bytes": 8787591168,
+      "signed_graph_bytes_per_rank": 26767416
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "depth": 0,
+      "full_determinants": 126410606437752,
+      "states": 26,
+      "directed_edges": 50,
+      "one_QM_wavefunction_bytes": 2071111375876128768,
+      "two_reference_arrays_bytes": 319488,
+      "signed_graph_bytes_per_rank": 416
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "depth": 1,
+      "full_determinants": 126410606437752,
+      "states": 7826,
+      "directed_edges": 30050,
+      "one_QM_wavefunction_bytes": 2071111375876128768,
+      "two_reference_arrays_bytes": 96165888,
+      "signed_graph_bytes_per_rank": 182816
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "depth": 2,
+      "full_determinants": 126410606437752,
+      "states": 725426,
+      "directed_edges": 4170050,
+      "one_QM_wavefunction_bytes": 2071111375876128768,
+      "two_reference_arrays_bytes": 8914034688,
+      "signed_graph_bytes_per_rank": 22483616
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "depth": 3,
+      "full_determinants": 126410606437752,
+      "states": 30984226,
+      "directed_edges": 236930050,
+      "one_QM_wavefunction_bytes": 2071111375876128768,
+      "two_reference_arrays_bytes": 380734169088,
+      "signed_graph_bytes_per_rank": 1195594016
+    },
+    {
+      "orbitals": 50,
+      "electrons": 17,
+      "depth": 0,
+      "full_determinants": 9847379391150,
+      "states": 34,
+      "directed_edges": 66,
+      "one_QM_wavefunction_bytes": 161339463944601600,
+      "two_reference_arrays_bytes": 417792,
+      "signed_graph_bytes_per_rank": 544
+    },
+    {
+      "orbitals": 50,
+      "electrons": 17,
+      "depth": 1,
+      "full_determinants": 9847379391150,
+      "states": 9010,
+      "directed_edges": 34914,
+      "one_QM_wavefunction_bytes": 161339463944601600,
+      "two_reference_arrays_bytes": 110714880,
+      "signed_graph_bytes_per_rank": 211744
+    },
+    {
+      "orbitals": 50,
+      "electrons": 17,
+      "depth": 2,
+      "full_determinants": 9847379391150,
+      "states": 727090,
+      "directed_edges": 4216674,
+      "one_QM_wavefunction_bytes": 161339463944601600,
+      "two_reference_arrays_bytes": 8934481920,
+      "signed_graph_bytes_per_rank": 22683424
+    },
+    {
+      "orbitals": 50,
+      "electrons": 17,
+      "depth": 3,
+      "full_determinants": 9847379391150,
+      "states": 26697650,
+      "directed_edges": 205870434,
+      "one_QM_wavefunction_bytes": 161339463944601600,
+      "two_reference_arrays_bytes": 328060723200,
+      "signed_graph_bytes_per_rank": 1037062944
+    },
+    {
+      "orbitals": 64,
+      "electrons": 32,
+      "depth": 0,
+      "full_determinants": 1832624140942590534,
+      "states": 33,
+      "directed_edges": 64,
+      "one_QM_wavefunction_bytes": 30025713925203403309056,
+      "two_reference_arrays_bytes": 405504,
+      "signed_graph_bytes_per_rank": 528
+    },
+    {
+      "orbitals": 64,
+      "electrons": 32,
+      "depth": 1,
+      "full_determinants": 1832624140942590534,
+      "states": 16401,
+      "directed_edges": 63552,
+      "one_QM_wavefunction_bytes": 30025713925203403309056,
+      "two_reference_arrays_bytes": 201535488,
+      "signed_graph_bytes_per_rank": 385424
+    },
+    {
+      "orbitals": 64,
+      "electrons": 32,
+      "depth": 2,
+      "full_determinants": 1832624140942590534,
+      "states": 2553441,
+      "directed_edges": 14824512,
+      "one_QM_wavefunction_bytes": 30025713925203403309056,
+      "two_reference_arrays_bytes": 31376683008,
+      "signed_graph_bytes_per_rank": 79725584
+    },
+    {
+      "orbitals": 64,
+      "electrons": 32,
+      "depth": 3,
+      "full_determinants": 1832624140942590534,
+      "states": 186488841,
+      "directed_edges": 1441717312,
+      "one_QM_wavefunction_bytes": 30025713925203403309056,
+      "two_reference_arrays_bytes": 2291574878208,
+      "signed_graph_bytes_per_rank": 7258779984
+    }
+  ]
+}

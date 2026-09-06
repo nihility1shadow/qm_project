@@ -1,0 +1,41 @@
+{
+  "notice": "No exact full-space QM is available at 50/25. Reference convergence and pilot output differences are not true QM fitting. Final particle conservation is constrained by normalization.",
+  "resource_notice": "Sum of rank peaks is not simultaneous RSS. Allocated rank-hours are not measured CPU time.",
+  "time_range_au": [
+    0,
+    4000
+  ],
+  "runs": [
+    {
+      "job": "647777",
+      "role": "reference_D2_F384",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "job": "647778",
+      "role": "sample_D2_10k",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "job": "647779",
+      "role": "reference_D2_F512",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "job": "647780",
+      "role": "reference_D1_F384",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "job": "647781",
+      "role": "nonhalf_D1_F384",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "job": "647782",
+      "role": "no_reference_1000",
+      "status": "awaiting complete downloaded output"
+    }
+  ],
+  "reference_comparisons": []
+}

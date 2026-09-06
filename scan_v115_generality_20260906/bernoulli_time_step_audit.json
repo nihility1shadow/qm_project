@@ -1,0 +1,43 @@
+{
+  "model": "H0=0, H1=sqrt(eta)*sigma_x; analytical diagnostic only",
+  "identity": "(1+r*dt)[(1-p)I+p*(-i H1/r)]=I-i H1 dt, p=r*dt/(1+r*dt)",
+  "warning": "Finite-dt expected propagator differs from exp(-i H1 T). Normalization can hide leading norm drift. This toy is not a bound on physical AHM error.",
+  "rows": [
+    {
+      "dt": 1.0,
+      "steps": 4000,
+      "raw_norm": 1.0012007201078699,
+      "raw_norm_error": 0.0012007201078698682,
+      "raw_occupation_error": 0.0007954555998019863,
+      "normalized_occupation_error": 2.0722419991070495e-07,
+      "propagator_max_error": 0.0004885681710520284
+    },
+    {
+      "dt": 0.5,
+      "steps": 8000,
+      "raw_norm": 1.0006001800134914,
+      "raw_norm_error": 0.0006001800134913804,
+      "raw_occupation_error": 0.00039755665807961194,
+      "normalized_occupation_error": 5.180605977539443e-08,
+      "propagator_max_error": 0.00024421562251830675
+    },
+    {
+      "dt": 0.25,
+      "steps": 16000,
+      "raw_norm": 1.0003000450016868,
+      "raw_norm_error": 0.0003000450016867884,
+      "raw_occupation_error": 0.0001987355585948425,
+      "normalized_occupation_error": 1.2951515637737998e-08,
+      "propagator_max_error": 0.00012209069702329156
+    },
+    {
+      "dt": 0.125,
+      "steps": 32000,
+      "raw_norm": 1.0001500112502104,
+      "raw_norm_error": 0.0001500112502104134,
+      "raw_occupation_error": 9.935708856190217e-05,
+      "normalized_occupation_error": 3.237878742901046e-09,
+      "propagator_max_error": 6.104107014215376e-05
+    }
+  ]
+}
