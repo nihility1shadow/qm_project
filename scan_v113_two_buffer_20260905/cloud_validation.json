@@ -173,7 +173,7 @@
       8,
       9
     ],
-    "notice": "Q is against same-parameter grid QM. Poisson D3 uses 246/252 reference states; full Fock D4 uses all 252 states and 1024 oscillator levels. Neither establishes large-system accuracy.",
+    "notice": "Q is against same-parameter grid QM. Poisson D3 uses 246/252 reference states; full Fock D4 uses all 252 states and 512 actual oscillator levels (the requested 1024 is clamped by the solver). Neither establishes large-system accuracy.",
     "poisson": {
       "Q_active_global": 15.590991386474625,
       "windows": [

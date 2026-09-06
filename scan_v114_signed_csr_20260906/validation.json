@@ -1,0 +1,156 @@
+{
+  "regressions": [
+    {
+      "old_job": 647652,
+      "new_job": 647709,
+      "max_abs_all_columns": 0.0,
+      "old": {
+        "wall_seconds": 3.76,
+        "reference_seconds": 2.325275,
+        "max_rank_peak_mib": 8.91015625,
+        "sum_rank_peaks_gib": 0.034626007080078125,
+        "graph_metadata_mib": 0.015732
+      },
+      "new": {
+        "wall_seconds": 4.25,
+        "reference_seconds": 2.374726,
+        "max_rank_peak_mib": 8.97265625,
+        "sum_rank_peaks_gib": 0.034908294677734375,
+        "graph_metadata_mib": 0.0065
+      }
+    },
+    {
+      "old_job": 647652,
+      "new_job": 647710,
+      "max_abs_all_columns": 0.0,
+      "old": {
+        "wall_seconds": 3.76,
+        "reference_seconds": 2.325275,
+        "max_rank_peak_mib": 8.91015625,
+        "sum_rank_peaks_gib": 0.034626007080078125,
+        "graph_metadata_mib": 0.015732
+      },
+      "new": {
+        "wall_seconds": 4.25,
+        "reference_seconds": 2.348081,
+        "max_rank_peak_mib": 10.92578125,
+        "sum_rank_peaks_gib": 0.038822174072265625,
+        "graph_metadata_mib": 0.015732
+      }
+    },
+    {
+      "old_job": 647653,
+      "new_job": 647711,
+      "max_abs_all_columns": 0.0,
+      "old": {
+        "wall_seconds": 17.8,
+        "reference_seconds": 16.449148,
+        "max_rank_peak_mib": 30.515625,
+        "sum_rank_peaks_gib": 1.7980232238769531,
+        "graph_metadata_mib": 3.754631
+      },
+      "new": {
+        "wall_seconds": 17.25,
+        "reference_seconds": 15.920724,
+        "max_rank_peak_mib": 28.3359375,
+        "sum_rank_peaks_gib": 1.6525497436523438,
+        "graph_metadata_mib": 1.519371
+      }
+    },
+    {
+      "old_job": 647654,
+      "new_job": 647712,
+      "max_abs_all_columns": 0.0,
+      "old": {
+        "wall_seconds": 253.26,
+        "reference_seconds": 251.627157,
+        "max_rank_peak_mib": 297.7578125,
+        "sum_rank_peaks_gib": 18.496173858642578,
+        "graph_metadata_mib": 65.670067
+      },
+      "new": {
+        "wall_seconds": 242.26,
+        "reference_seconds": 240.643324,
+        "max_rank_peak_mib": 257.76953125,
+        "sum_rank_peaks_gib": 16.00861358642578,
+        "graph_metadata_mib": 25.527397
+      }
+    },
+    {
+      "old_job": 647655,
+      "new_job": 647713,
+      "max_abs_all_columns": 0.0,
+      "old": {
+        "wall_seconds": 152.67,
+        "reference_seconds": 148.230879,
+        "max_rank_peak_mib": 232.41015625,
+        "sum_rank_peaks_gib": 28.824054718017578,
+        "graph_metadata_mib": 65.670067
+      },
+      "new": {
+        "wall_seconds": 249.93,
+        "reference_seconds": 247.37691,
+        "max_rank_peak_mib": 192.234375,
+        "sum_rank_peaks_gib": 23.80712890625,
+        "graph_metadata_mib": 25.527397
+      }
+    },
+    {
+      "old_job": 647662,
+      "new_job": 647714,
+      "max_abs_all_columns": 0.0,
+      "old": {
+        "wall_seconds": 3.66,
+        "reference_seconds": 2.350344,
+        "max_rank_peak_mib": 8.96875,
+        "sum_rank_peaks_gib": 0.034912109375,
+        "graph_metadata_mib": 0.015732
+      },
+      "new": {
+        "wall_seconds": 1.47,
+        "reference_seconds": 0.018469,
+        "max_rank_peak_mib": 10.27734375,
+        "sum_rank_peaks_gib": 0.03444671630859375,
+        "graph_metadata_mib": null
+      }
+    }
+  ],
+  "physical_parameters": "unchanged",
+  "sampling_rng_and_sum_order": "unchanged",
+  "status": "Six cloud regressions passed; same-allocation AB timing checked separately",
+  "timing_note": "The unpinned 128-rank run is slower than the earlier v1.13 run; it is retained in the report. Use the explicit 64-ranks/node same-allocation AB result to assess timing.",
+  "peak_sum_note": "Sum of individual process peaks is not simultaneous aggregate RSS.",
+  "same_allocation_AB": {
+    "old_first": {
+      "wall_seconds": 150.12,
+      "reference_seconds": 147.496216,
+      "max_rank_peak_mib": 232.41015625,
+      "sum_rank_peaks_gib": 28.827571868896484,
+      "graph_metadata_mib": 65.670067
+    },
+    "new_first": {
+      "wall_seconds": 148.74,
+      "reference_seconds": 146.216451,
+      "max_rank_peak_mib": 192.3828125,
+      "sum_rank_peaks_gib": 23.81777572631836,
+      "graph_metadata_mib": 25.527397
+    },
+    "new_second": {
+      "wall_seconds": 149.24,
+      "reference_seconds": 146.582751,
+      "max_rank_peak_mib": 192.30078125,
+      "sum_rank_peaks_gib": 23.800193786621094,
+      "graph_metadata_mib": 25.527397
+    },
+    "old_second": {
+      "wall_seconds": 149.63,
+      "reference_seconds": 147.076096,
+      "max_rank_peak_mib": 232.45703125,
+      "sum_rank_peaks_gib": 28.846725463867188,
+      "graph_metadata_mib": 65.670067
+    },
+    "old_mean_reference_seconds": 147.286156,
+    "new_mean_reference_seconds": 146.39960100000002,
+    "reference_time_ratio_new_over_old": 0.993980730952066
+  }
+}

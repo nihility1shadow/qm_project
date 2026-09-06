@@ -567,32 +567,47 @@ bool sepmb_read_reference_cache(const char *path, const string& expected_key,
 
 struct SepmbReferenceTransitions {
   vector<size_t> offsets;
-  vector<int> sources; // Incoming edges, ordered by source to preserve summation.
-  vector<double> couplings;
+  // Incoming edges, ordered by source to preserve summation. In the uniform
+  // case a negative entry encodes -(source+1), including the sign of -0.0.
+  vector<int> sources;
+  vector<double> couplings; // Allocated only for nonuniform/fallback graphs.
+  bool uniform_signed = false;
+  double common_magnitude = 0.0;
 };
 
 template<class Generator>
 SepmbReferenceTransitions sepmb_build_reference_transitions(
-    const int nstate, const Generator& visit_edges) {
+    const int nstate, const Generator& visit_edges,
+    const bool compress_uniform = true) {
   SepmbReferenceTransitions graph;
   graph.offsets.assign(nstate+1, 0);
+  bool first_edge = true, same_magnitude = true;
   for(int source=0; source<nstate; source++) {
-    visit_edges(source, [&](int target, double) {
-      if(target < 0 || target >= nstate) abort();
+    visit_edges(source, [&](int target, double coupling) {
+      if(target < 0 || target >= nstate || !std::isfinite(coupling)) abort();
+      const double magnitude = fabs(coupling);
+      if(first_edge) { graph.common_magnitude = magnitude; first_edge = false; }
+      else if(magnitude != graph.common_magnitude) same_magnitude = false;
       graph.offsets[target+1]++;
     });
   }
+  graph.uniform_signed = compress_uniform && same_magnitude && !first_edge;
   for(int target=0; target<nstate; target++) graph.offsets[target+1] += graph.offsets[target];
   graph.sources.resize(graph.offsets.back());
-  graph.couplings.resize(graph.offsets.back());
+  if(!graph.uniform_signed) graph.couplings.resize(graph.offsets.back());
   vector<size_t> cursor = graph.offsets;
   for(int source=0; source<nstate; source++) {
     visit_edges(source, [&](int target, double coupling) {
       if(target < 0 || target >= nstate) abort();
       const size_t edge = cursor[target]++;
       if(edge >= graph.offsets[target+1]) abort();
-      graph.sources[edge] = source;
-      graph.couplings[edge] = coupling;
+      if(graph.uniform_signed) {
+        if(fabs(coupling) != graph.common_magnitude) abort();
+        graph.sources[edge] = std::signbit(coupling) ? -(source+1) : source;
+      } else {
+        graph.sources[edge] = source;
+        graph.couplings[edge] = coupling;
+      }
     });
   }
   for(int target=0; target<nstate; target++)
@@ -652,12 +667,19 @@ dcomplex sepmb_reference_hopping(const SepmbReferenceContext& context,
   const SepmbReferenceTransitions& graph = *context.transitions;
   dcomplex value = 0.0;
   for(size_t edge=graph.offsets[target]; edge<graph.offsets[target+1]; edge++) {
-    const dcomplex amplitude = row[graph.sources[edge]];
+    const int encoded = graph.sources[edge];
+    const int source = graph.uniform_signed && encoded < 0 ? -(encoded+1) : encoded;
+    const dcomplex amplitude = row[source];
     // The component check avoids hypot for ordinary amplitudes, while
     // retaining the original 1.e-300 absolute-value cutoff near zero.
     if(fabs(real(amplitude)) <= 1.e-300 && fabs(imag(amplitude)) <= 1.e-300 &&
         abs(amplitude) <= 1.e-300) continue;
-    value += graph.couplings[edge]*amplitude;
+    const double coupling = graph.uniform_signed
+        ? (encoded < 0 ? -graph.common_magnitude : graph.common_magnitude)
+        : graph.couplings[edge];
+    // Keep per-edge multiplication and source order; factoring the common
+    // magnitude outside this sum would change floating-point roundoff.
+    value += coupling*amplitude;
   }
   return value;
 }
@@ -1507,16 +1529,19 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         for(int orbital : reference_states[source]) reference_energy[source] += En[orbital];
       }
     }
+    const char *env_signed_csr = getenv("SEP_MB_REFERENCE_SIGNED_CSR");
+    const bool signed_csr = !env_signed_csr || atoi(env_signed_csr) != 0;
     const SepmbReferenceTransitions reference_transitions =
-        sepmb_build_reference_transitions(reference_state_count, visit_edges);
+        sepmb_build_reference_transitions(reference_state_count, visit_edges, signed_csr);
     const size_t edge_count = reference_transitions.sources.size();
     // Index maps are needed only during construction, not propagation.
     reference_index.clear();
     reference_mask_index.clear();
     reference_mask_index.rehash(0);
     if(myid==master) {
-      printf("#SEP_MB_REFERENCE_GRAPH storage=csr-real-gather edges=%zu metadata_mib=%.6f\n",
-          edge_count, (edge_count*(sizeof(int)+sizeof(double))+
+      printf("#SEP_MB_REFERENCE_GRAPH storage=%s edges=%zu metadata_mib=%.6f\n",
+          reference_transitions.uniform_signed ? "csr-uniform-signed" : "csr-real-gather",
+          edge_count, (edge_count*sizeof(int)+reference_transitions.couplings.size()*sizeof(double)+
               reference_transitions.offsets.size()*sizeof(size_t))/(1024.0*1024.0));
       fflush(stdout);
     }

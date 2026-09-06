@@ -1,0 +1,22 @@
+{
+  "status": "conditional-electronic kernel only; nuclear Poisson estimator not integrated",
+  "small_hilbert_graphs": 44,
+  "state_checks": 1760,
+  "matrix_element_checks": 881,
+  "exact_hopping_branch_checks": 880,
+  "max_exact_kick_relative_error": 8.853785344302245e-15,
+  "max_hopping_spectral_norm_error": 1.887379141862766e-15,
+  "max_state_relative_error": 8.71536867082354e-15,
+  "max_overlap_absolute_error": 1.7121142456075765e-16,
+  "max_occupation_absolute_error": 1.3562737217230083e-15,
+  "singular_overlap_nonzero_density_passed": true,
+  "large_case": {
+    "orbitals": 30,
+    "electrons": 15,
+    "conditional_orbital_matrix_bytes": 7200,
+    "100_jump_and_observable_checks_seconds_python": 0.023205399978905916,
+    "full_basis_allocated": false
+  },
+  "limits": "No demonstrated full trajectory variance improvement or 4000-au fitting score. Reference-subspace control and Poisson time/count weights must be rederived and validated before integration.",
+  "source_context": "https://arxiv.org/abs/2101.10944"
+}

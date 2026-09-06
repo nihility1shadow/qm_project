@@ -1,0 +1,26 @@
+{
+  "status": "awaiting million-path results",
+  "QM_job": 647656,
+  "orbitals": 10,
+  "electrons": 5,
+  "time_range_au": [
+    0,
+    4000
+  ],
+  "definition": "Q = RMS(QM occupation - initial occupation) / RMS(Poisson occupation - QM occupation)",
+  "notice": "The D3 reference includes 246 of 252 electronic determinants here; high small-system Q alone does not establish scalable 30/15 accuracy.",
+  "jobs": [
+    {
+      "job": "647718",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "job": "647719",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "job": "647720",
+      "status": "awaiting complete downloaded output"
+    }
+  ]
+}

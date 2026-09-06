@@ -6,7 +6,7 @@ set -euo pipefail
 module purge
 module load gcc/12.1.0 openmpi/4.1.8
 project=/data/home/yd101802/yd101802/nonadia
-run="$project/cloud-runs/v111-distributed-20260905/$SLURM_JOB_ID"
+run="$project/cloud-runs/v114-ab-20260906/$SLURM_JOB_ID/${BENCH_CASE:?missing case label}"
 mkdir -p "$run"
 cd "$run"
 export LD_LIBRARY_PATH="$project/.deps/install/lib:${LD_LIBRARY_PATH:-}"
@@ -26,7 +26,7 @@ export SEP_MB_STRATIFY_FORWARD_ORBITALS=1 SEP_MB_STRATIFY_FORWARD_STEPS=1
 export SEP_MB_STRATIFY_BACK_PATHS=1 SEP_MB_RQMC_REPLICATES=4
 export SEP_MB_EXACT_BACK_JUMPS=0 SEP_MB_ALL_ORDER_BACK_DP=1
 export SEP_MB_RECURRENCE_DENSE=1 SEP_MB_RECURRENCE_STRIDE=3
-binary="$project/${BINARY:-na_mpi_v114_signed_csr.out}"
+binary="$project/${BINARY:-na_mpi_v113_cache.out}"
 env | sort | grep -E '^(AHM_|SEP_MB_|SLURM_NTASKS)' > config.txt
 sha256sum "$binary" > binary.sha256
 /usr/bin/time -f 'wall_seconds=%e launcher_peak_rss_kb=%M' -o time.txt \

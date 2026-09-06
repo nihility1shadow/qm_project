@@ -1,0 +1,55 @@
+{
+  "scope": "Exact conditional nuclear propagation and Poisson weighting only; no sampled AH accuracy claim",
+  "nuclear_horizon_au": 4000,
+  "nuclear_histories": 4,
+  "nuclear_interval_checks": 17,
+  "nuclear_fock_oracle_levels": 2840,
+  "maximum_conditional_alpha": 46.68607717091591,
+  "max_nuclear_state_error": 9.588095641566222e-13,
+  "max_nuclear_oracle_norm_error": 3.752553823233029e-14,
+  "max_nuclear_overlap_error": 3.7636560534792807e-14,
+  "poisson_count_checks_with_H0_disabled": [
+    {
+      "orbitals": 4,
+      "electrons": 1,
+      "horizon_au": 4000.0,
+      "maximum_count": 24,
+      "max_occupation_error": 1.6653345369377348e-16,
+      "norm_error": 2.220446049250313e-16,
+      "full_electronic_basis_allocated": false
+    },
+    {
+      "orbitals": 6,
+      "electrons": 3,
+      "horizon_au": 4000.0,
+      "maximum_count": 24,
+      "max_occupation_error": 2.22099880405426e-15,
+      "norm_error": 6.697633413458255e-16,
+      "full_electronic_basis_allocated": false
+    },
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "horizon_au": 4000.0,
+      "maximum_count": 24,
+      "max_occupation_error": 9.011526646833347e-15,
+      "norm_error": 5.551127170689642e-15,
+      "full_electronic_basis_allocated": false
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "horizon_au": 4000.0,
+      "maximum_count": 24,
+      "max_occupation_error": 1.27676881770328e-14,
+      "norm_error": 1.0658537977909782e-14,
+      "full_electronic_basis_allocated": false
+    }
+  ],
+  "limits": [
+    "The count sum is deterministic; it does not measure stochastic variance.",
+    "The production method splits nuclear T/V, which is not identical to continuous H0.",
+    "Reference projection generally destroys a single Slater representation.",
+    "No claim of improved 4000-au AH fitting follows from these kernel checks."
+  ]
+}

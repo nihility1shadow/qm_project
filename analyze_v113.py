@@ -61,7 +61,7 @@ report={'status':'4000-au 10/5 comparison complete; 30/15 4000-au production job
         'regressions':regressions,'cache_parameter_rejection':{'job':647664,'expected_exit':3,'passed':True},
         'resources':[resources(j) for j in [647619,647653,647624,647654,647655,647656,647657,647666,647665,647667]],
         'small_4000':{'qm_job':647656,'poisson_job':647657,'full_fock_job':647666,'active_orbitals':active,
-                      'notice':'Q is against same-parameter grid QM. Poisson D3 uses 246/252 reference states; full Fock D4 uses all 252 states and 1024 oscillator levels. Neither establishes large-system accuracy.',
+                      'notice':'Q is against same-parameter grid QM. Poisson D3 uses 246/252 reference states; full Fock D4 uses all 252 states and 512 actual oscillator levels (the requested 1024 is clamped by the solver). Neither establishes large-system accuracy.',
                       'poisson':metrics(poisson),'full_fock':metrics(fock)}}
 (OUT/'cloud_validation.json').write_text(json.dumps(report,indent=2))
 

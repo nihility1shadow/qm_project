@@ -1,0 +1,71 @@
+{
+  "status": "awaiting long-run outputs",
+  "time_range_au": [
+    0,
+    4000
+  ],
+  "orbitals": 30,
+  "electrons": 15,
+  "active_orbitals": [
+    0,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+  ],
+  "jobs": [
+    {
+      "job": "647702",
+      "role": "reference384",
+      "local_status": "awaiting complete downloaded files"
+    },
+    {
+      "job": "647703",
+      "role": "reference512",
+      "local_status": "awaiting complete downloaded files"
+    },
+    {
+      "job": "647704",
+      "role": "sample384",
+      "local_status": "awaiting complete downloaded files"
+    },
+    {
+      "job": "647705",
+      "role": "sample384",
+      "local_status": "awaiting complete downloaded files"
+    },
+    {
+      "job": "647706",
+      "role": "sample384",
+      "local_status": "awaiting complete downloaded files"
+    },
+    {
+      "job": "647707",
+      "role": "sample512",
+      "local_status": "awaiting complete downloaded files"
+    },
+    {
+      "job": "647708",
+      "role": "reference_d2",
+      "local_status": "complete and validated",
+      "max_particle_error": 5.5067062021407764e-14,
+      "minimum_occupation": 0.0,
+      "maximum_occupation": 1.0000000000000002,
+      "max_rank_peak_mib": 32.703125,
+      "sum_rank_peaks_gib": 3.6141815185546875
+    }
+  ],
+  "Q_against_full_30_15_QM": null,
+  "notice": "Reference agreement and independent-seed repeatability cannot measure a shared systematic bias. No full-space 30/15 QM truth is available."
+}
