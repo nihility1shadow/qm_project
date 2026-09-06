@@ -1,0 +1,10 @@
+#AHAU_MPI nproc=4 seed_base=111001 wc_eV=2.7000000000000002e+00 eta=2.9999999999999999e-07 delE_eV=-1.7194874968839816e+01 nstep=200 dt=0.5
+#AHAU_BASIS mode=path-local full_determinant_basis=skipped
+#SEP_MB_ALGORITHM fock_mode=0 selected=stochastic-poisson fock_states=384 estimated_fock_work_mib=4.429688 auto_fock_max_mib=256.000000
+#SEP_MB_REFERENCE requested_distance=3 selected_distance=3 active=1 states=246 max_states=4096 fock_states=384 estimated_work_mib=2.882812
+#SEP_MB_REFERENCE_GRAPH storage=csr-real-gather edges=1210 metadata_mib=0.015732
+#SEP_MB_REFERENCE_ENCODING compact=1 bytes_per_state=8
+#SEP_MB_TIMING reference_seconds=2.325275 reference_mpi=1 local_fock=96
+#SEP_MB_TIMING sampling_seconds=0.165349 skipped_zero_reference=816000
+#SEP_MB_RESOURCE max_rank_peak_rss_kb=9124 ranks=4
+#SEP_MB_RESOURCE sum_rank_peak_rss_kb=36308 (sum of individual peaks, not simultaneous RSS)

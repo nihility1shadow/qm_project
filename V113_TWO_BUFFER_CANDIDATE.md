@@ -1,18 +1,8 @@
-# v1.13 candidate: real incoming-edge CSR and two reference work vectors
+# v1.13: two-buffer reference implementation
 
-## Status
-
-Candidate only. Local graph and propagation-operator regressions pass.
-The full Linux/MPI build, runtime/memory measurement and high-order long-time
-accuracy tests have NOT run. Remote upload was blocked by automatic approval
-review, which requires explicit authorization of the existing computation
-server address. An approval question is pending with the user. Do not treat
-this stage as proof of high fitting Q for 30 orbitals / 15 electrons.
-
-The v1.12 compact-reference tag is the fully cloud-tested rollback point;
-its completed 2500-a.u. accuracy limits are documented in V112_COMPACT_REFERENCE.md.
-The launcher continues to default to v1.12. After building the candidate,
-select it explicitly with BINARY=na_mpi_v113_csr.out.
+The original candidate is preserved at tag v1.13-csr-candidate. Full cloud
+regressions and the small-system 4000-a.u. comparison have now completed.
+See [current validation and job status](V113_CLOUD_4000.md).
 
 ## Changes
 
@@ -52,34 +42,10 @@ with halo rows. Maximum operator difference: 0.
 
 The tests compile extracted production functions. The operator test also
 exercises the actual new CSR builder; it requires the local v1.12 tag.
-This is not a substitute for compiling the entire simulation or testing real
-MPI communication. It verifies the changed graph and operator calculations.
+These local tests verify the changed graph and operator calculations; the
+separate cloud report records full MPI regression and resource measurements.
 
 For 715,136 states and 384 oscillator levels, the formula for global work
 vectors falls from approximately 12.28 GiB (three arrays) to 8.18 GiB (two).
 Halo buffers, reference metadata and sampling overhead are additional.
 These are array-size calculations, NOT measured process memory or speedups.
-
-## Concrete validation plan after server approval
-
-Use the existing project directory only; build a separate candidate executable.
-First compare with the recorded same-seed v1.12 short outputs, then measure
-D3 at 64 ranks and 128 ranks across two nodes. Example submissions:
-
-```bash
-sbatch --ntasks=4 --export=ALL,BINARY=na_mpi_v113_csr.out run_poisson_lowmem.slurm 200 1000 10 5 3 4096 1 111001
-sbatch --ntasks=64 --export=ALL,BINARY=na_mpi_v113_csr.out run_poisson_lowmem.slurm 20 100 30 15 2 65536 1 111001
-sbatch --ntasks=64 --mem=48G --export=ALL,BINARY=na_mpi_v113_csr.out run_poisson_lowmem.slurm 20 100 30 15 3 1000000 1 111001
-sbatch --nodes=2 --ntasks=128 --ntasks-per-node=64 --mem=48G --export=ALL,BINARY=na_mpi_v113_csr.out run_poisson_lowmem.slurm 20 100 30 15 3 1000000 1 111001
-```
-
-Check correct observable files (ahm-sepmb-*.dat), particle conservation,
-all finite values and same-seed differences. The original 64-rank D3 capacity
-result was 369.30 s for 10 a.u. in v1.12; the candidate must be measured.
-Only after these checks, select the faster rank count and run 2500 a.u.,
-715,136 reference states, 384 oscillator levels with independent seeds,
-within 48 hours per run. Assess each active orbital in every 100-a.u. window,
-show all orbitals and distinguish seed repeatability from true QM fitting.
-Retain a higher-Fock check and reference-order comparison. Do not smooth or
-clip estimates to inflate fitting scores. No new cloud jobs have been submitted
-at this candidate stage.

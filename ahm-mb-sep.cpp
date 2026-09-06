@@ -16,6 +16,9 @@
 #include <chrono>
 #include <unordered_map>
 #include <unordered_set>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
 
 #define _YYY_REALSPACE_AV_
 
@@ -513,6 +516,55 @@ struct SepmbFockContext {
   double energy_origin;
   dcomplex *hamiltonian_work;
 };
+// Canonical byte order makes the integrity check independent of host endianness.
+unsigned long long sepmb_reference_checksum(unsigned long long checksum,
+    const double *values, const int count) {
+  for(int i=0; i<count; i++) {
+    unsigned long long bits = 0;
+    static_assert(sizeof(bits)==sizeof(values[i]), "reference cache requires 64-bit doubles");
+    memcpy(&bits, values+i, sizeof(bits));
+    for(int byte=0; byte<8; byte++) {
+      checksum ^= (bits>>(8*byte))&255ULL;
+      checksum *= 1099511628211ULL;
+    }
+  }
+  return checksum;
+}
+
+bool sepmb_read_reference_cache(const char *path, const string& expected_key,
+    const int steps, const int columns, const double dt, double **values,
+    string& error) {
+  ifstream input(path);
+  string line;
+  if(!input || !getline(input, line) || line!=expected_key) {
+    error = "missing reference cache or mismatched physical/solver parameters";
+    return false;
+  }
+  while(input.peek()=='#') getline(input, line);
+  unsigned long long checksum = 14695981039346656037ULL;
+  for(int step=0; step<=steps; step++) {
+    double time = 0.0;
+    if(!(input>>time) || !std::isfinite(time) || fabs(time-step*dt)>1.e-9) {
+      error = "reference cache has a missing or misaligned time row"; return false;
+    }
+    for(int col=0; col<columns; col++) {
+      if(!(input>>values[step][col]) || !std::isfinite(values[step][col])) {
+        error = "reference cache has missing or non-finite weights"; return false;
+      }
+    }
+    checksum = sepmb_reference_checksum(checksum, values[step], columns);
+  }
+  string marker;
+  unsigned long long recorded_checksum = 0;
+  if(!(input>>marker>>recorded_checksum) || marker!="#SEP_MB_REFERENCE_COMPLETE" ||
+      recorded_checksum!=checksum) {
+    error = "reference cache is incomplete or its checksum differs"; return false;
+  }
+  input>>ws;
+  if(!input.eof()) { error = "unexpected trailing reference cache data"; return false; }
+  return true;
+}
+
 struct SepmbReferenceTransitions {
   vector<size_t> offsets;
   vector<int> sources; // Incoming edges, ordered by source to preserve summation.
@@ -1280,12 +1332,16 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   csproj(wgt_init*Lfct, alp_init, wgt_init, alp_init, excited0, S0, prb[0]);
   vector<set<int> > reference_states;
   vector<unsigned long long> reference_masks;
+  const char *env_reference_cache = getenv("SEP_MB_REFERENCE_CACHE");
+  const bool reference_cached = env_reference_cache && *env_reference_cache;
+  long long cached_reference_count = 0;
   const bool compact_reference = path_local_basis && Norb <= 64;
   while(reference_distance >= 0) {
     if(path_local_basis) {
       const long long expected_states = sepmb_reference_state_count(
           Norb, Nel, S0.find(0) != S0.end(), reference_distance);
       if(expected_states <= reference_max_states) {
+        if(reference_cached) { cached_reference_count = expected_states; break; }
         if(compact_reference)
           reference_masks = sepmb_generate_reference_masks(
               Norb, S0, reference_distance);
@@ -1320,8 +1376,9 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     reference_states.clear();
     reference_masks.clear();
   }
-  const int reference_state_count = (int)(compact_reference
-      ? reference_masks.size() : reference_states.size());
+  const int reference_state_count = (int)(reference_cached && path_local_basis
+      ? cached_reference_count : (compact_reference
+        ? reference_masks.size() : reference_states.size()));
   const bool reference_control = !deterministic_fock &&
       reference_distance >= 0 && reference_state_count > 0 &&
       reference_state_count <= reference_max_states;
@@ -1344,8 +1401,39 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     }
   }
 
+  // The key covers the propagated problem and numerical convention, but not
+  // seed or sample count: those affect only the independent Poisson residual.
+  ostringstream reference_key_builder;
+  reference_key_builder << "#SEP_MB_REFERENCE_KEY v1.13-csr-v1 " << setprecision(17)
+      << Norb << ' ' << Nel << ' ' << nwf << ' ' << dt << ' '
+      << reference_distance << ' ' << reference_state_count << ' '
+      << reference_fock_states << ' ' << reference_grid_split << ' '
+      << reference_split_operator << ' ' << path_local_basis << ' '
+      << (reference_mpi ? nproc : 1) << ' ' << mass << ' ' << freq << ' ' << delx << ' '
+      << real(alp_init) << ' ' << imag(alp_init) << ' '
+      << real(wgt_init) << ' ' << imag(wgt_init);
+  for(int orbital=0; orbital<Norb; orbital++)
+    reference_key_builder << ' ' << En[orbital] << ' ' << cpl[orbital] << ' ' << S0.count(orbital);
+  const string reference_key = reference_key_builder.str();
   const auto reference_started = std::chrono::steady_clock::now();
-  if(reference_control && (reference_mpi || myid==master)) {
+  if(reference_cached) {
+    int cache_ok = reference_control ? 1 : 0;
+    if(myid==master) {
+      string error = "reference cache requires an enabled reference";
+      if(cache_ok) cache_ok = sepmb_read_reference_cache(env_reference_cache,
+          reference_key, nwf, Norb+3, dt, reference_prb, error) ? 1 : 0;
+      if(!cache_ok) cerr << error << '\n';
+      else printf("#SEP_MB_REFERENCE_CACHE loaded=1 rows=%d parameter_key_and_checksum=verified\n", nwf+1);
+      fflush(stdout);
+    }
+#ifdef _YYY_MPI_
+    MPI_Bcast(&cache_ok, 1, MPI_INT, master, MPI_COMM_WORLD);
+    if(!cache_ok) MPI_Abort(MPI_COMM_WORLD, 3);
+#else
+    if(!cache_ok) abort();
+#endif
+  }
+  if(reference_control && !reference_cached && (reference_mpi || myid==master)) {
     map<set<int>, int> reference_index;
     unordered_map<unsigned long long, int> reference_mask_index;
     if(compact_reference) reference_mask_index.reserve(reference_state_count);
@@ -1472,6 +1560,19 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         reference_energy[reference_initial]+0.5*freq;
     reference_context.operator_part = 0;
 
+    FILE *reference_output = NULL;
+    unsigned long long reference_checksum = 14695981039346656037ULL;
+    const char *env_reference_output = getenv("SEP_MB_REFERENCE_OUTPUT");
+    if(myid==master && env_reference_output && atoi(env_reference_output) != 0) {
+      reference_output = fopen("reference-observables.dat", "w");
+      if(!reference_output) { perror("reference-observables.dat"); abort(); }
+      fprintf(reference_output, "%s\n", reference_key.c_str());
+      fprintf(reference_output, "# Deterministic bounded reference ONLY; not the Poisson result or exact QM.\n");
+      fprintf(reference_output, "# states=%d fock_states=%d steps=%d dt=%.16e\n",
+          reference_state_count, reference_fock_states, nwf, dt);
+      fprintf(reference_output, "# Raw weights: time particle_weight coordinate_weight vibration_weight orbital_weights...\n");
+    }
+    const int progress_stride = max(1, (int)(100.0/dt));
     for(int step=0; step<=nwf; step++) {
       {
         vector<double> reference_row(Norb+3, 0.0);
@@ -1529,6 +1630,23 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               (Norb+3)*sizeof(double));
         }
       }
+      if(myid==master) {
+        if(reference_output) {
+          fprintf(reference_output, "%.8f", step*dt);
+          for(int k=0; k<Norb+3; k++) fprintf(reference_output, " %+.16e", reference_prb[step][k]);
+          fprintf(reference_output, "\n");
+          reference_checksum = sepmb_reference_checksum(reference_checksum,
+              reference_prb[step], Norb+3);
+        }
+        if(step%progress_stride == 0 || step==nwf) {
+          printf("#SEP_MB_PROGRESS phase=reference step=%d steps=%d time_au=%.8f elapsed_seconds=%.6f norm=%.16e\n",
+              step, nwf, step*dt, std::chrono::duration<double>(
+                std::chrono::steady_clock::now()-reference_started).count(),
+              reference_prb[step][0]/Nel);
+          fflush(stdout);
+          if(reference_output) fflush(reference_output);
+        }
+      }
       if(step < nwf) {
         if(reference_grid_split) {
           reference_context.operator_part = 3;
@@ -1582,6 +1700,10 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       }
     }
 
+    if(reference_output) {
+      fprintf(reference_output, "#SEP_MB_REFERENCE_COMPLETE %llu\n", reference_checksum);
+      fclose(reference_output);
+    }
     free1d(reference_wavefunction);
     free1d(reference_work);
     free1d(reference_energy);
@@ -1599,6 +1721,14 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   if(reference_control) bzero(prb[0], (Norb+3)*sizeof(double));
 
   const auto sampling_started = std::chrono::steady_clock::now();
+  const auto report_sampling_progress = [&](const int completed) {
+    if(myid==master && (completed%max(1, ntraj_local/20) == 0 || completed==ntraj_local)) {
+      printf("#SEP_MB_PROGRESS phase=sampling master_completed=%d master_total=%d elapsed_seconds=%.6f\n",
+          completed, ntraj_local, std::chrono::duration<double>(
+            std::chrono::steady_clock::now()-sampling_started).count());
+      fflush(stdout);
+    }
+  };
   // Changing the Poisson rate only changes variance. Each sampled jump is
   // compensated by inv_rate_scale so the expected propagator is unchanged.
   const double lambda          = abs(cpl[1]),
@@ -1800,6 +1930,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     }
 
     for(int n=0; n<ntraj_local; n++) {
+    report_sampling_progress(n);
       // Interleaved groups provide independent randomized QMC replicas in one run.
       const unsigned long long global_trajectory = trajectory_offset+n;
       const int rqmc_group = global_trajectory%rqmc_replicates;
@@ -2037,6 +2168,7 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
   };
 
   for(int n=0; n<ntraj_local; n++) {
+    report_sampling_progress(n);
     // Interleaved groups provide independent randomized QMC replicas in one run.
     const unsigned long long global_trajectory = trajectory_offset+n;
     const int rqmc_group = global_trajectory%rqmc_replicates;
@@ -2437,6 +2569,8 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
     }
 	}
   }
+
+  report_sampling_progress(ntraj_local);
 
 #ifdef _YYY_MPI_
   double **avg  = array2d<double>(nmeas+1, Norb+3);
