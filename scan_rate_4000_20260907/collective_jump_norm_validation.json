@@ -1,0 +1,56 @@
+{
+  "scope": "Electronic collective-jump operator only; includes non-half-filled and one-hole systems. No physical 4000-au variance claim.",
+  "identity": "impurity occupied: ||H1 psi||^2/g^2 = 1 - ||Q_bath^dagger c_hat||^2; impurity empty: same norm = ||Q_bath^dagger c_hat||^2",
+  "cases": [
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "random_states": 64,
+      "max_norm_identity_error": 1.3322676295501878e-15,
+      "max_normalized_jump_norm_squared": 0.8906048268095148
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "random_states": 64,
+      "max_norm_identity_error": 3.552713678800501e-15,
+      "max_normalized_jump_norm_squared": 0.6794318647392533
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "random_states": 64,
+      "max_norm_identity_error": 3.4416913763379853e-15,
+      "max_normalized_jump_norm_squared": 0.6520169037167125
+    },
+    {
+      "orbitals": 50,
+      "electrons": 17,
+      "random_states": 64,
+      "max_norm_identity_error": 2.7755575615628914e-15,
+      "max_normalized_jump_norm_squared": 0.8578136010037762
+    },
+    {
+      "orbitals": 64,
+      "electrons": 32,
+      "random_states": 64,
+      "max_norm_identity_error": 2.3314683517128287e-15,
+      "max_normalized_jump_norm_squared": 0.6297095323343477
+    },
+    {
+      "orbitals": 50,
+      "electrons": 1,
+      "random_states": 64,
+      "max_norm_identity_error": 4.440892098500626e-16,
+      "max_normalized_jump_norm_squared": 1.0000000000000004
+    },
+    {
+      "orbitals": 50,
+      "electrons": 49,
+      "random_states": 64,
+      "max_norm_identity_error": 1.021405182655144e-14,
+      "max_normalized_jump_norm_squared": 1.0000000000000098
+    }
+  ],
+  "wall_seconds": 0.2113344999961555
+}

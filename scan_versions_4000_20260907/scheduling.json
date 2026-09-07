@@ -1,0 +1,8 @@
+{
+  "deferred_job": 647707,
+  "original_reference_job": 647703,
+  "dependency": "afterany:647783:647800:647801:647802:647803:647804:647805",
+  "reason": "Prioritize missing actual-QM resource profile and shorter historical comparisons before same-seed F512 sampling; all experiments retained.",
+  "date": "2026-09-07",
+  "original_reference_status": "647703 completed successfully; original afterok dependency had already been cleared by Slurm"
+}
