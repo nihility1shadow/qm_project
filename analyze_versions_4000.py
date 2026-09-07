@@ -28,7 +28,7 @@ def main():
     assert qmbath.shape==(10,3)
     rows=list(csv.DictReader((OUT/'jobs.tsv').open(),delimiter='\t'))
     report={'notice':'Same physical model, requested 10,000 paths, 64 ranks, seed, and time grid. Features absent from an old binary may ignore newer controls. Retained binary identities are recorded by SHA; this is not a claim that binaries were rebuilt from the current tags.',
-     'QM_job':647656,'time_range_au':[0,4000],'jobs':[]};ready=[]
+     'QM_job':647656,'time_range_au':[0,4000],'jobs':[]};ready=[];arrays={}
     for row in rows:
         p=OUT/row['job'];datafile=p/'ahm-sepmb-s10-n5-10000.dat'
         if not all(x.exists() for x in [datafile,p/'time.txt',p/'program.out',p/'config.txt',p/'binary.sha256']):
@@ -51,15 +51,39 @@ def main():
           'actual_output_headers':header,'wall_seconds':wall,'allocated_rank_hours':64*wall/3600,
           'max_rank_peak_mib':None if peak is None else peak/1024,
           'sum_rank_peaks_gib':None if summed is None else summed/1024**2,**metrics(qm,data[:,4:])}
-        report['jobs'].append(result);ready.append(result)
+        result['minimum_unclipped_occupation']=float(data[:,4:].min())
+        result['maximum_unclipped_occupation']=float(data[:,4:].max())
+        result['max_absolute_orbital_error']=float(abs(data[:,4:]-qm[:,4:]).max())
+        report['jobs'].append(result);ready.append(result);arrays[row['version']]=data
     if ready:
         fig,axes=plt.subplots(1,3,figsize=(13,4.6));labels=[r['version'] for r in ready];x=np.arange(len(ready))
         for ax,key,title in zip(axes,['Q_against_QM_weakest_active_orbital_window','wall_seconds','max_rank_peak_mib'],['Worst active orbital/window Q against QM','Wall time (seconds), 64 ranks','Maximum process peak RSS (MiB)']):
             vals=[r[key] if r[key] is not None else np.nan for r in ready]
-            ax.bar(x,vals,color='#35877e');ax.set_xticks(x,labels);ax.set_title(title,fontsize=10);ax.set_yscale('log');ax.grid(axis='y',alpha=.15)
+            bars=ax.bar(x,vals,color='#35877e');ax.set_xticks(x,labels);ax.set_title(title,fontsize=10);ax.grid(axis='y',alpha=.15)
+            if key.startswith('Q_'):ax.set_yscale('log')
+            else:ax.set_ylim(0,max(vals)*1.22)
+            for bar,value in zip(bars,vals):
+                if np.isfinite(value):ax.text(bar.get_x()+bar.get_width()/2,value,f'{value:.2g}' if key.startswith('Q_') else f'{value:.1f}',ha='center',va='bottom',fontsize=8)
         axes[0].axhline(10,color='#b44c49',ls='--',lw=1)
+        qm_profile=ROOT/'scan_v115_generality_20260906/qm_resource_validation.json'
+        if qm_profile.exists():
+            measured=json.loads(qm_profile.read_text())['process_peak_mib']
+            axes[2].axhline(measured,color='#b44c49',ls='--',lw=1,label=f'QM (1 process): {measured:.2f} MiB')
+            axes[2].set_ylim(0,max(measured,max(r['max_rank_peak_mib'] or 0 for r in ready))*1.25);axes[2].legend(fontsize=7)
         fig.suptitle('10 orbitals / 5 electrons | 4000 au | 10,000 paths per retained binary\nActual supported branches and memory fields are recorded; peak sums are not simultaneous RSS',fontsize=11)
         fig.tight_layout(rect=(0,0,1,.87));fig.savefig(FIG/'version_comparison.png',dpi=150);plt.close(fig)
+    if 'v109' in arrays and 'v114' in arrays:
+        a,b=arrays['v109'],arrays['v114']
+        report['v109_v114_matched_comparison']={'max_occupation_difference':float(abs(a[:,4:]-b[:,4:]).max()),'max_difference_all_columns':float(abs(a-b).max()),'wall_speed_ratio':next(r['wall_seconds'] for r in ready if r['version']=='v109')/next(r['wall_seconds'] for r in ready if r['version']=='v114'),'notice':'One run of each binary, same physical inputs/path count/ranks/seed; not an equal-error optimized benchmark or a universal speedup.'}
+    if ready:
+        fig,axes=plt.subplots(2,3,figsize=(13,7),sharex=True,sharey=True)
+        for ax,r in zip(axes.flat,ready):
+            delta=arrays[r['version']][:,4:]-qm[:,4:]
+            ax.semilogy(qm[:,0],np.maximum(abs(delta).max(axis=1),1e-18),lw=.55,color='#35877e')
+            ax.set_title(r['version']+' | max error over all 10 orbitals',fontsize=9)
+            ax.set(xlabel='Time (a.u.)',ylabel='Absolute occupation error');ax.grid(alpha=.15)
+        fig.suptitle('Complete 0–4000 au | Same 10,000 paths per binary | Errors against full many-electron grid QM\nOriginal output; common logarithmic scale; floor 1e-18 is used only for plotting zero error',fontsize=11)
+        fig.tight_layout(rect=(0,0,1,.91));fig.savefig(FIG/'version_errors_over_time.png',dpi=145);plt.close(fig)
     (OUT/'validation.json').write_text(json.dumps(report,indent=2,allow_nan=False))
     print(json.dumps([{'version':r['version'],'job':r['job'],'status':r['status']} for r in report['jobs']],indent=2))
 

@@ -1,0 +1,1 @@
+ranks=128 user_cpu_seconds_sum=273194.150000 system_cpu_seconds_sum=9783.520000 max_process_wall_seconds=2212.770000 max_rank_peak_rss_kb=23372 sum_rank_peak_rss_kb=2522216

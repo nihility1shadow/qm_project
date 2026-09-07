@@ -1,0 +1,67 @@
+#AHAU_MPI nproc=64 seed_base=1155017 wc_eV=2.7000000000000002e+00 eta=2.9999999999999999e-07 delE_eV=-1.7194874968839816e+01 nstep=8000 dt=0.5
+#AHAU_BASIS mode=path-local full_determinant_basis=skipped
+#SEP_MB_ALGORITHM fock_mode=0 selected=stochastic-poisson fock_states=384 estimated_fock_work_mib=173098465860.058594 auto_fock_max_mib=256.000000
+#SEP_MB_REFERENCE requested_distance=1 selected_distance=1 active=1 states=9010 max_states=800000 fock_states=384 estimated_work_mib=105.585938
+#SEP_MB_REFERENCE_GRAPH storage=csr-uniform-signed edges=34914 metadata_mib=0.201935
+#SEP_MB_PROGRESS phase=reference step=0 steps=8000 time_au=0.00000000 elapsed_seconds=0.032222 norm=9.9999999999999911e-01
+#SEP_MB_PROGRESS phase=reference step=200 steps=8000 time_au=100.00000000 elapsed_seconds=10.022827 norm=1.0000000000000027e+00
+#SEP_MB_PROGRESS phase=reference step=400 steps=8000 time_au=200.00000000 elapsed_seconds=19.184100 norm=1.0000000000000029e+00
+#SEP_MB_PROGRESS phase=reference step=600 steps=8000 time_au=300.00000000 elapsed_seconds=28.183783 norm=9.9999999999999745e-01
+#SEP_MB_PROGRESS phase=reference step=800 steps=8000 time_au=400.00000000 elapsed_seconds=37.337665 norm=9.9999999999999267e-01
+#SEP_MB_PROGRESS phase=reference step=1000 steps=8000 time_au=500.00000000 elapsed_seconds=46.795090 norm=9.9999999999999201e-01
+#SEP_MB_PROGRESS phase=reference step=1200 steps=8000 time_au=600.00000000 elapsed_seconds=55.767596 norm=9.9999999999998790e-01
+#SEP_MB_PROGRESS phase=reference step=1400 steps=8000 time_au=700.00000000 elapsed_seconds=64.910357 norm=9.9999999999999523e-01
+#SEP_MB_PROGRESS phase=reference step=1600 steps=8000 time_au=800.00000000 elapsed_seconds=74.137520 norm=9.9999999999999578e-01
+#SEP_MB_PROGRESS phase=reference step=1800 steps=8000 time_au=900.00000000 elapsed_seconds=83.123214 norm=9.9999999999999556e-01
+#SEP_MB_PROGRESS phase=reference step=2000 steps=8000 time_au=1000.00000000 elapsed_seconds=92.286778 norm=9.9999999999999190e-01
+#SEP_MB_PROGRESS phase=reference step=2200 steps=8000 time_au=1100.00000000 elapsed_seconds=101.288712 norm=9.9999999999998490e-01
+#SEP_MB_PROGRESS phase=reference step=2400 steps=8000 time_au=1200.00000000 elapsed_seconds=110.269323 norm=9.9999999999997302e-01
+#SEP_MB_PROGRESS phase=reference step=2600 steps=8000 time_au=1300.00000000 elapsed_seconds=119.247186 norm=9.9999999999998246e-01
+#SEP_MB_PROGRESS phase=reference step=2800 steps=8000 time_au=1400.00000000 elapsed_seconds=128.400058 norm=9.9999999999997968e-01
+#SEP_MB_PROGRESS phase=reference step=3000 steps=8000 time_au=1500.00000000 elapsed_seconds=137.797128 norm=9.9999999999999123e-01
+#SEP_MB_PROGRESS phase=reference step=3200 steps=8000 time_au=1600.00000000 elapsed_seconds=146.879150 norm=9.9999999999997558e-01
+#SEP_MB_PROGRESS phase=reference step=3400 steps=8000 time_au=1700.00000000 elapsed_seconds=156.125307 norm=9.9999999999998723e-01
+#SEP_MB_PROGRESS phase=reference step=3600 steps=8000 time_au=1800.00000000 elapsed_seconds=165.112553 norm=9.9999999999997846e-01
+#SEP_MB_PROGRESS phase=reference step=3800 steps=8000 time_au=1900.00000000 elapsed_seconds=174.079606 norm=9.9999999999999833e-01
+#SEP_MB_PROGRESS phase=reference step=4000 steps=8000 time_au=2000.00000000 elapsed_seconds=183.222574 norm=1.0000000000000089e+00
+#SEP_MB_PROGRESS phase=reference step=4200 steps=8000 time_au=2100.00000000 elapsed_seconds=192.366243 norm=1.0000000000000104e+00
+#SEP_MB_PROGRESS phase=reference step=4400 steps=8000 time_au=2200.00000000 elapsed_seconds=201.407520 norm=1.0000000000000102e+00
+#SEP_MB_PROGRESS phase=reference step=4600 steps=8000 time_au=2300.00000000 elapsed_seconds=211.157529 norm=1.0000000000000060e+00
+#SEP_MB_PROGRESS phase=reference step=4800 steps=8000 time_au=2400.00000000 elapsed_seconds=220.234450 norm=1.0000000000000109e+00
+#SEP_MB_PROGRESS phase=reference step=5000 steps=8000 time_au=2500.00000000 elapsed_seconds=229.272345 norm=1.0000000000000040e+00
+#SEP_MB_PROGRESS phase=reference step=5200 steps=8000 time_au=2600.00000000 elapsed_seconds=238.310308 norm=9.9999999999997824e-01
+#SEP_MB_PROGRESS phase=reference step=5400 steps=8000 time_au=2700.00000000 elapsed_seconds=247.514022 norm=9.9999999999996159e-01
+#SEP_MB_PROGRESS phase=reference step=5600 steps=8000 time_au=2800.00000000 elapsed_seconds=256.622827 norm=9.9999999999994715e-01
+#SEP_MB_PROGRESS phase=reference step=5800 steps=8000 time_au=2900.00000000 elapsed_seconds=265.663889 norm=9.9999999999991662e-01
+#SEP_MB_PROGRESS phase=reference step=6000 steps=8000 time_au=3000.00000000 elapsed_seconds=274.853693 norm=9.9999999999990496e-01
+#SEP_MB_PROGRESS phase=reference step=6200 steps=8000 time_au=3100.00000000 elapsed_seconds=283.906957 norm=9.9999999999988343e-01
+#SEP_MB_PROGRESS phase=reference step=6400 steps=8000 time_au=3200.00000000 elapsed_seconds=292.948651 norm=9.9999999999993872e-01
+#SEP_MB_PROGRESS phase=reference step=6600 steps=8000 time_au=3300.00000000 elapsed_seconds=302.142988 norm=9.9999999999990852e-01
+#SEP_MB_PROGRESS phase=reference step=6800 steps=8000 time_au=3400.00000000 elapsed_seconds=311.331349 norm=9.9999999999991929e-01
+#SEP_MB_PROGRESS phase=reference step=7000 steps=8000 time_au=3500.00000000 elapsed_seconds=320.451725 norm=9.9999999999990852e-01
+#SEP_MB_PROGRESS phase=reference step=7200 steps=8000 time_au=3600.00000000 elapsed_seconds=329.475746 norm=9.9999999999994982e-01
+#SEP_MB_PROGRESS phase=reference step=7400 steps=8000 time_au=3700.00000000 elapsed_seconds=338.622932 norm=9.9999999999996658e-01
+#SEP_MB_PROGRESS phase=reference step=7600 steps=8000 time_au=3800.00000000 elapsed_seconds=348.163473 norm=9.9999999999997347e-01
+#SEP_MB_PROGRESS phase=reference step=7800 steps=8000 time_au=3900.00000000 elapsed_seconds=357.153087 norm=9.9999999999997036e-01
+#SEP_MB_PROGRESS phase=reference step=8000 steps=8000 time_au=4000.00000000 elapsed_seconds=366.278888 norm=9.9999999999996680e-01
+#SEP_MB_REFERENCE_ENCODING compact=1 bytes_per_state=8
+#SEP_MB_TIMING reference_seconds=366.287005 reference_mpi=1 local_fock=6
+#SEP_MB_PROGRESS phase=sampling master_completed=0 master_total=15 elapsed_seconds=0.021614
+#SEP_MB_PROGRESS phase=sampling master_completed=1 master_total=15 elapsed_seconds=4.910171
+#SEP_MB_PROGRESS phase=sampling master_completed=2 master_total=15 elapsed_seconds=9.874341
+#SEP_MB_PROGRESS phase=sampling master_completed=3 master_total=15 elapsed_seconds=15.139041
+#SEP_MB_PROGRESS phase=sampling master_completed=4 master_total=15 elapsed_seconds=20.366082
+#SEP_MB_PROGRESS phase=sampling master_completed=5 master_total=15 elapsed_seconds=25.314815
+#SEP_MB_PROGRESS phase=sampling master_completed=6 master_total=15 elapsed_seconds=30.307038
+#SEP_MB_PROGRESS phase=sampling master_completed=7 master_total=15 elapsed_seconds=35.244086
+#SEP_MB_PROGRESS phase=sampling master_completed=8 master_total=15 elapsed_seconds=40.656957
+#SEP_MB_PROGRESS phase=sampling master_completed=9 master_total=15 elapsed_seconds=45.500024
+#SEP_MB_PROGRESS phase=sampling master_completed=10 master_total=15 elapsed_seconds=50.692696
+#SEP_MB_PROGRESS phase=sampling master_completed=11 master_total=15 elapsed_seconds=55.624621
+#SEP_MB_PROGRESS phase=sampling master_completed=12 master_total=15 elapsed_seconds=60.432631
+#SEP_MB_PROGRESS phase=sampling master_completed=13 master_total=15 elapsed_seconds=65.770411
+#SEP_MB_PROGRESS phase=sampling master_completed=14 master_total=15 elapsed_seconds=71.186886
+#SEP_MB_PROGRESS phase=sampling master_completed=15 master_total=15 elapsed_seconds=76.738174
+#SEP_MB_TIMING sampling_seconds=311.453223 skipped_zero_reference=9693838
+#SEP_MB_RESOURCE max_rank_peak_rss_kb=26408 ranks=64
+#SEP_MB_RESOURCE sum_rank_peak_rss_kb=1479916 (sum of individual peaks, not simultaneous RSS)

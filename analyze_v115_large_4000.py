@@ -7,19 +7,20 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from analyze_v113_large_4000 import validate_grid,load_reference
+from analyze_midpoint_probability import midpoint_count
 ROOT=Path(__file__).resolve().parent
 OUT=ROOT/'scan_v115_generality_20260906';FIG=OUT/'figures'
 BINARY_SHA='4354060f4de44e5ef7a644b35fb401111385e7e934f202c7b283589d685edda2'
 
 
-def resources(folder):
+def resources(folder,reference_active=True):
     log=(folder/'program.out').read_text();timing=(folder/'time.txt').read_text()
     def field(name,text=log):
         match=re.search(re.escape(name)+r'=([0-9.eE+-]+)',text)
         if not match:raise ValueError(f'{folder}: missing {name}')
         return float(match[1])
     wall=field('wall_seconds',timing);ranks=int(field('ranks'))
-    return {'wall_seconds':wall,'ranks':ranks,'reference_seconds':field('reference_seconds'),
+    return {'wall_seconds':wall,'ranks':ranks,'reference_seconds':field('reference_seconds') if reference_active else None,
             'sampling_seconds':field('sampling_seconds'),'max_rank_peak_mib':field('max_rank_peak_rss_kb')/1024,
             'sum_rank_peaks_gib':field('sum_rank_peak_rss_kb')/1024**2,'allocated_rank_hours':wall*ranks/3600}
 
@@ -37,16 +38,27 @@ def read_run(row):
     if (folder/'binary.sha256').read_text().split()[0]!=BINARY_SHA:raise ValueError('unexpected binary')
     data=np.loadtxt(folder/f'ahm-sepmb-s{norb}-n{nel}-{paths}.dat');validate_grid(data,norb,steps,.5)
     log=(folder/'program.out').read_text()
+    for marker in [f'nproc={ranks}',f'seed_base={seed}',f'nstep={steps} dt=0.5','selected=stochastic-poisson','full_determinant_basis=skipped']:
+        if marker not in log:raise ValueError(f'{folder}: actual solver missing {marker}')
     match=re.search(r'requested_distance=(-?\d+) selected_distance=(-?\d+) active=(\d+) states=(\d+) max_states=\d+ fock_states=(\d+)',log)
     if not match or int(match[2])!=depth:raise ValueError('reference distance silently changed')
     states=0 if depth<0 else sum(comb(nel-1,d)*(comb(norb-nel,d)+comb(norb-nel,d+1)) for d in range(depth+1))
     if int(match[3])!=(depth>=0) or int(match[4])!=states or int(match[5])!=fock:raise ValueError('reference geometry mismatch')
     reference=None;stats={}
+    header='\n'.join(line for line in (folder/f'ahm-sepmb-s{norb}-n{nel}-{paths}.dat').read_text().splitlines() if line.startswith('#'))
+    sampling=next(line for line in header.splitlines() if line.startswith('#sampling:'))
+    if 'stratify_forward_steps=1' not in sampling:raise ValueError('unexpected sampling branch')
+    probability=float(re.search(r'jump_probability=([0-9.eE+-]+)',sampling)[1])
+    effective=midpoint_count(paths,probability)/paths
+    stats['fixed_step_probability_audit']={'nominal':probability,'actual_midpoint_marginal':effective,'relative_event_probability_error':effective/probability-1,'notice':'Event-probability rounding error, NOT the physical occupation error. This low-path pilot cannot establish sampling accuracy.'}
     if depth>=0 and row['reference_job']=='-':
-        reference,stats=load_reference(folder/'reference-observables.dat',norb,nel,steps,.5)
+        reference,reference_stats=load_reference(folder/'reference-observables.dat',norb,nel,steps,.5)
+        stats.update(reference_stats)
+        stats['max_pilot_difference_to_reference']=float(abs(data[:,4:]-reference[:,4:]).max())
     initial=np.r_[np.ones(nel),np.zeros(norb-nel)]
-    return data,reference,{'job':row['job'],'role':row['role'],'status':'complete and validated',
-        'reference_states':states,'resources':resources(folder),**stats,
+    return data,reference,{'job':row['job'],'role':row['role'],'status':'complete data validated; accuracy NOT accepted',
+        'accuracy_status':'Low-path pilot: visible nonphysical fluctuations and fixed-step event rounding; not a high-accuracy production result',
+        'reference_states':states,'resources':resources(folder,depth>=0),**stats,
         'maximum_occupation_change':float(abs(data[:,4:]-initial).max()),
         'minimum_occupation':float(data[:,4:].min()),'maximum_occupation':float(data[:,4:].max()),
         'normalized_particle_sum_error':float(abs(data[:,4:].sum(axis=1)-nel).max())}
@@ -73,7 +85,7 @@ def main():
             ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0),useOffset=False)
         axes[0,0].legend(fontsize=6)
         for ax in axes[-1]:ax.set_xlabel('Time (a.u.)')
-        fig.suptitle(f"50 orbitals / {row['electrons']} electrons | 0–4000 au | job {row['job']}\n{row['role']}; pilot/convergence test, not a full-space QM accuracy proof",fontsize=12)
+        fig.suptitle(f"50 orbitals / {row['electrons']} electrons | 0–4000 au | job {row['job']}\n{row['role']}; low-path pilot with rounded jump probability, NOT a QM accuracy proof",fontsize=12)
         fig.tight_layout(rect=(0,0,1,.96));fig.savefig(FIG/f"job{row['job']}_all_orbitals.png",dpi=120);plt.close(fig)
     comparisons=[]
     for a,b in [('reference_D1_F384','reference_D2_F384'),('reference_D2_F384','reference_D2_F512')]:

@@ -1,0 +1,23 @@
+#AHAU_MPI nproc=64 seed_base=1155099 wc_eV=2.7000000000000002e+00 eta=2.9999999999999999e-07 delE_eV=-1.7194874968839816e+01 nstep=8000 dt=0.5
+#AHAU_BASIS mode=path-local full_determinant_basis=skipped
+#SEP_MB_ALGORITHM fock_mode=0 selected=stochastic-poisson fock_states=384 estimated_fock_work_mib=2222061441288.609375 auto_fock_max_mib=256.000000
+#SEP_MB_REFERENCE requested_distance=-1 selected_distance=-1 active=0 states=0 max_states=800000 fock_states=384 estimated_work_mib=0.000000
+#SEP_MB_PROGRESS phase=sampling master_completed=0 master_total=15 elapsed_seconds=0.025200
+#SEP_MB_PROGRESS phase=sampling master_completed=1 master_total=15 elapsed_seconds=8.960111
+#SEP_MB_PROGRESS phase=sampling master_completed=2 master_total=15 elapsed_seconds=16.997156
+#SEP_MB_PROGRESS phase=sampling master_completed=3 master_total=15 elapsed_seconds=24.527307
+#SEP_MB_PROGRESS phase=sampling master_completed=4 master_total=15 elapsed_seconds=32.057767
+#SEP_MB_PROGRESS phase=sampling master_completed=5 master_total=15 elapsed_seconds=39.571837
+#SEP_MB_PROGRESS phase=sampling master_completed=6 master_total=15 elapsed_seconds=47.030155
+#SEP_MB_PROGRESS phase=sampling master_completed=7 master_total=15 elapsed_seconds=54.573794
+#SEP_MB_PROGRESS phase=sampling master_completed=8 master_total=15 elapsed_seconds=62.414922
+#SEP_MB_PROGRESS phase=sampling master_completed=9 master_total=15 elapsed_seconds=70.876687
+#SEP_MB_PROGRESS phase=sampling master_completed=10 master_total=15 elapsed_seconds=78.502721
+#SEP_MB_PROGRESS phase=sampling master_completed=11 master_total=15 elapsed_seconds=85.967922
+#SEP_MB_PROGRESS phase=sampling master_completed=12 master_total=15 elapsed_seconds=93.553180
+#SEP_MB_PROGRESS phase=sampling master_completed=13 master_total=15 elapsed_seconds=100.959786
+#SEP_MB_PROGRESS phase=sampling master_completed=14 master_total=15 elapsed_seconds=108.573881
+#SEP_MB_PROGRESS phase=sampling master_completed=15 master_total=15 elapsed_seconds=116.418974
+#SEP_MB_TIMING sampling_seconds=469.312625 skipped_zero_reference=0
+#SEP_MB_RESOURCE max_rank_peak_rss_kb=26764 ranks=64
+#SEP_MB_RESOURCE sum_rank_peak_rss_kb=1578884 (sum of individual peaks, not simultaneous RSS)

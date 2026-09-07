@@ -1,0 +1,96 @@
+{
+  "scope": "Exact marginal event-count audit of the current fixed-midpoint per-step stratification. It is NOT the physical occupation error, and hybrid control can cancel some biases.",
+  "cause": "u=(permuted_index+0.5)/N; K=# {k: (k+0.5)/N < p}. Away from midpoint equality K=floor(N*p+0.5); the strict boundary is handled by binary search using the actual floating-point comparisons.",
+  "available_alternative": "SEP_MB_STRATIFY_FORWARD_STEPS=0 with SEP_MB_STRATIFY_FORWARD_COUNT=1 uses randomized shifted CDF sampling already present in v1.14; benchmark before recommending.",
+  "boundary_checks": 190,
+  "rows": [
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "paths": 10000,
+      "nominal_jump_probability": 0.0006841847675930676,
+      "actual_jumps_per_step": 7,
+      "midpoint_actual_probability": 0.0007,
+      "relative_probability_error": 0.023115440676309884,
+      "expected_jumps_in_4000_au": 5.4734781407445405,
+      "midpoint_actual_mean_jumps": 5.6
+    },
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "paths": 1000000,
+      "nominal_jump_probability": 0.0006841847675930676,
+      "actual_jumps_per_step": 684,
+      "midpoint_actual_probability": 0.000684,
+      "relative_probability_error": -0.0002700551105770943,
+      "expected_jumps_in_4000_au": 5.4734781407445405,
+      "midpoint_actual_mean_jumps": 5.472
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "paths": 100000,
+      "nominal_jump_probability": 0.0011429243915122035,
+      "actual_jumps_per_step": 114,
+      "midpoint_actual_probability": 0.00114,
+      "relative_probability_error": -0.002558692013156061,
+      "expected_jumps_in_4000_au": 9.143395132097629,
+      "midpoint_actual_mean_jumps": 9.12
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "paths": 1000000,
+      "nominal_jump_probability": 0.0011429243915122035,
+      "actual_jumps_per_step": 1143,
+      "midpoint_actual_probability": 0.001143,
+      "relative_probability_error": 6.61535341777153e-05,
+      "expected_jumps_in_4000_au": 9.143395132097629,
+      "midpoint_actual_mean_jumps": 9.144
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "paths": 1000,
+      "nominal_jump_probability": 0.0014649647230724732,
+      "actual_jumps_per_step": 1,
+      "midpoint_actual_probability": 0.001,
+      "relative_probability_error": -0.3173897062157932,
+      "expected_jumps_in_4000_au": 11.719717784579785,
+      "midpoint_actual_mean_jumps": 8.0
+    },
+    {
+      "orbitals": 50,
+      "electrons": 17,
+      "paths": 1000,
+      "nominal_jump_probability": 0.0013880402006513396,
+      "actual_jumps_per_step": 1,
+      "midpoint_actual_probability": 0.001,
+      "relative_probability_error": -0.2795597710132972,
+      "expected_jumps_in_4000_au": 11.104321605210718,
+      "midpoint_actual_mean_jumps": 8.0
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "paths": 10000,
+      "nominal_jump_probability": 0.0014649647230724732,
+      "actual_jumps_per_step": 15,
+      "midpoint_actual_probability": 0.0015,
+      "relative_probability_error": 0.023915440676310018,
+      "expected_jumps_in_4000_au": 11.719717784579785,
+      "midpoint_actual_mean_jumps": 12.0
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "paths": 1000000,
+      "nominal_jump_probability": 0.0014649647230724732,
+      "actual_jumps_per_step": 1465,
+      "midpoint_actual_probability": 0.001465,
+      "relative_probability_error": 2.408039386270211e-05,
+      "expected_jumps_in_4000_au": 11.719717784579785,
+      "midpoint_actual_mean_jumps": 11.719999999999999
+    }
+  ]
+}

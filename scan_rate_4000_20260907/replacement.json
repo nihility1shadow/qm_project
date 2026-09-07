@@ -1,0 +1,7 @@
+{
+  "cancelled_array": 647806,
+  "replacement_array": 647807,
+  "cancelled_before_any_task_execution": true,
+  "reason": "Replace rate-only screening after identifying deterministic midpoint event-count rounding. Keep old manifest and submission script.",
+  "replacement_manifest": "sampling_jobs.tsv"
+}

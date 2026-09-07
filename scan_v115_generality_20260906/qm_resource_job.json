@@ -11,5 +11,5 @@
   "binary": "na_mpi_v114_signed_csr.out",
   "remote_run_directory": "/data/home/yd101802/yd101802/nonadia/cloud-runs/v111-distributed-20260905/647783",
   "measurement": "GNU time inside mpirun wraps the actual QM executable; records process peak RSS, user/system CPU and wall time.",
-  "status": "submitted, pending allocation; no measured result yet"
+  "status": "completed and validated; see qm_resource_validation.json"
 }

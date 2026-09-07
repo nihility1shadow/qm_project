@@ -24,17 +24,86 @@
     {
       "job": "647780",
       "role": "reference_D1_F384",
-      "status": "awaiting complete downloaded output"
+      "status": "complete data validated; accuracy NOT accepted",
+      "accuracy_status": "Low-path pilot: visible nonphysical fluctuations and fixed-step event rounding; not a high-accuracy production result",
+      "reference_states": 7826,
+      "resources": {
+        "wall_seconds": 802.87,
+        "ranks": 64,
+        "reference_seconds": 306.702928,
+        "sampling_seconds": 494.562522,
+        "max_rank_peak_mib": 27.66796875,
+        "sum_rank_peaks_gib": 1.5320816040039062,
+        "allocated_rank_hours": 14.273244444444444
+      },
+      "fixed_step_probability_audit": {
+        "nominal": 0.0014649647230724732,
+        "actual_midpoint_marginal": 0.001,
+        "relative_event_probability_error": -0.3173897062157932,
+        "notice": "Event-probability rounding error, NOT the physical occupation error. This low-path pilot cannot establish sampling accuracy."
+      },
+      "fock_levels": 384,
+      "raw_norm_max_error": 1.0447198661722723e-13,
+      "max_pilot_difference_to_reference": 0.3779974099991011,
+      "maximum_occupation_change": 0.37799742690225263,
+      "minimum_occupation": -0.14019272788621626,
+      "maximum_occupation": 1.1412163981812828,
+      "normalized_particle_sum_error": 1.7763568394002505e-13
     },
     {
       "job": "647781",
       "role": "nonhalf_D1_F384",
-      "status": "awaiting complete downloaded output"
+      "status": "complete data validated; accuracy NOT accepted",
+      "accuracy_status": "Low-path pilot: visible nonphysical fluctuations and fixed-step event rounding; not a high-accuracy production result",
+      "reference_states": 9010,
+      "resources": {
+        "wall_seconds": 679.39,
+        "ranks": 64,
+        "reference_seconds": 366.287005,
+        "sampling_seconds": 311.453223,
+        "max_rank_peak_mib": 25.7890625,
+        "sum_rank_peaks_gib": 1.4113578796386719,
+        "allocated_rank_hours": 12.078044444444444
+      },
+      "fixed_step_probability_audit": {
+        "nominal": 0.0013880402006513398,
+        "actual_midpoint_marginal": 0.001,
+        "relative_event_probability_error": -0.2795597710132973,
+        "notice": "Event-probability rounding error, NOT the physical occupation error. This low-path pilot cannot establish sampling accuracy."
+      },
+      "fock_levels": 384,
+      "raw_norm_max_error": 1.1823875212257917e-13,
+      "max_pilot_difference_to_reference": 0.08798682511229507,
+      "maximum_occupation_change": 0.0879868427973673,
+      "minimum_occupation": -0.07224476963181714,
+      "maximum_occupation": 1.0720594763734939,
+      "normalized_particle_sum_error": 2.0605739337042905e-13
     },
     {
       "job": "647782",
       "role": "no_reference_1000",
-      "status": "awaiting complete downloaded output"
+      "status": "complete data validated; accuracy NOT accepted",
+      "accuracy_status": "Low-path pilot: visible nonphysical fluctuations and fixed-step event rounding; not a high-accuracy production result",
+      "reference_states": 0,
+      "resources": {
+        "wall_seconds": 470.83,
+        "ranks": 64,
+        "reference_seconds": null,
+        "sampling_seconds": 469.312625,
+        "max_rank_peak_mib": 26.13671875,
+        "sum_rank_peaks_gib": 1.5057411193847656,
+        "allocated_rank_hours": 8.37031111111111
+      },
+      "fixed_step_probability_audit": {
+        "nominal": 0.0014649647230724732,
+        "actual_midpoint_marginal": 0.001,
+        "relative_event_probability_error": -0.3173897062157932,
+        "notice": "Event-probability rounding error, NOT the physical occupation error. This low-path pilot cannot establish sampling accuracy."
+      },
+      "maximum_occupation_change": 2961.461843376081,
+      "minimum_occupation": -2895.503649351546,
+      "maximum_occupation": 2961.461843376081,
+      "normalized_particle_sum_error": 9.225331609741261e-11
     }
   ],
   "reference_comparisons": []

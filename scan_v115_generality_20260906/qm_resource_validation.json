@@ -1,0 +1,35 @@
+{
+  "job": 647783,
+  "comparison_job": 647656,
+  "status": "complete; numerical agreement within documented limits, not bitwise identical",
+  "time_range_au": [
+    0,
+    4000
+  ],
+  "shape": [
+    8001,
+    14
+  ],
+  "ranks": 1,
+  "binary_sha256": "4354060f4de44e5ef7a644b35fb401111385e7e934f202c7b283589d685edda2",
+  "resource_scope": "GNU time inside MPI wraps the actual single QM executable, not the launcher.",
+  "process_wall_seconds": 3267.39,
+  "process_peak_rss_kb": 19860.0,
+  "user_cpu_seconds": 3266.55,
+  "system_cpu_seconds": 0.07,
+  "process_peak_mib": 19.39453125,
+  "cpu_hours": 0.9073944444444445,
+  "launcher_wall_seconds": 3268.2,
+  "max_absolute_difference_all_columns": 5.182521078950231e-13,
+  "numerically_identical": false,
+  "max_absolute_occupation_difference": 2.5845992013273644e-13,
+  "max_normalized_occupation_difference": 6.661338147750939e-16,
+  "agreement_limits": {
+    "all_columns_absolute": 1e-12,
+    "normalized_occupations_absolute": 1e-14
+  },
+  "byte_identical": false,
+  "data_sha256": "510810ce1706f462a562cb7a39fe4644ea25c10ef64e4d24f7cd9b071049591b",
+  "raw_QM_norm_max_error": 1.1935119559325358e-11,
+  "notice": "Numerical QM reference at the fixed grid/time step; repeated equality does not establish grid/time-step convergence."
+}
