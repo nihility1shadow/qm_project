@@ -191,7 +191,7 @@ def analyze(directory):
             'warning':'Three seeds give a noisy SEM estimate; this is not a QM fitting score or a guaranteed confidence bound.',
             'windows':windows(t,mean-initial,sem,active),'max_SEM':float(sem.max()),
             'max_mean_particle_error':float(abs(mean.sum(axis=1)-15).max()),
-            'minimum_raw_replicate_occupation':float(values.min())}
+            'minimum_unclipped_normalized_replicate_occupation':float(values.min())}
         curves=[(f"Poisson seed {rec['entry']['seed']}",rec['data'][:,4:],color,'-')
                 for rec,color in zip(samples,['#ae774b','#609882','#7c89af'])]
         curves.append(('3-seed mean',mean,'#28353d','-'))
