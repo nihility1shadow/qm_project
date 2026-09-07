@@ -1,0 +1,82 @@
+{
+  "notice": "Same physical model, requested 10,000 paths, 64 ranks, seed, and time grid. Features absent from an old binary may ignore newer controls. Retained binary identities are recorded by SHA; this is not a claim that binaries were rebuilt from the current tags.",
+  "QM_job": 647656,
+  "time_range_au": [
+    0,
+    4000
+  ],
+  "jobs": [
+    {
+      "version": "v093",
+      "binary": "na_mpi_v093_final.out",
+      "job": "647800",
+      "steps": "8000",
+      "paths": "10000",
+      "orbitals": "10",
+      "electrons": "5",
+      "ranks": "64",
+      "seed": "1158001",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "version": "v096",
+      "binary": "na_mpi_v096_stratified_label.out",
+      "job": "647801",
+      "steps": "8000",
+      "paths": "10000",
+      "orbitals": "10",
+      "electrons": "5",
+      "ranks": "64",
+      "seed": "1158001",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "version": "v098",
+      "binary": "na_mpi_v098_stratified_kondo.out",
+      "job": "647802",
+      "steps": "8000",
+      "paths": "10000",
+      "orbitals": "10",
+      "electrons": "5",
+      "ranks": "64",
+      "seed": "1158001",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "version": "v103",
+      "binary": "na_mpi_v103_replicated_rqmc_clean.out",
+      "job": "647803",
+      "steps": "8000",
+      "paths": "10000",
+      "orbitals": "10",
+      "electrons": "5",
+      "ranks": "64",
+      "seed": "1158001",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "version": "v109",
+      "binary": "na_mpi_v109_nested_split.out",
+      "job": "647804",
+      "steps": "8000",
+      "paths": "10000",
+      "orbitals": "10",
+      "electrons": "5",
+      "ranks": "64",
+      "seed": "1158001",
+      "status": "awaiting complete downloaded output"
+    },
+    {
+      "version": "v114",
+      "binary": "na_mpi_v114_signed_csr.out",
+      "job": "647805",
+      "steps": "8000",
+      "paths": "10000",
+      "orbitals": "10",
+      "electrons": "5",
+      "ranks": "64",
+      "seed": "1158001",
+      "status": "awaiting complete downloaded output"
+    }
+  ]
+}

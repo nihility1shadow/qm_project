@@ -1,0 +1,15 @@
+{
+  "job": 647783,
+  "role": "QM solver-level resource measurement",
+  "orbitals": 10,
+  "electrons": 5,
+  "steps": 8000,
+  "dt": 0.5,
+  "ranks": 1,
+  "max_wall_hours": 2,
+  "reference_QM_job": 647656,
+  "binary": "na_mpi_v114_signed_csr.out",
+  "remote_run_directory": "/data/home/yd101802/yd101802/nonadia/cloud-runs/v111-distributed-20260905/647783",
+  "measurement": "GNU time inside mpirun wraps the actual QM executable; records process peak RSS, user/system CPU and wall time.",
+  "status": "submitted, pending allocation; no measured result yet"
+}

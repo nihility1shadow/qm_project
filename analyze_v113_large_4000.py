@@ -83,7 +83,7 @@ def plot_orbitals(t,curves,destination,title,initial):
         ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0),useOffset=False)
     axes[0,0].legend(fontsize=6)
     for ax in axes[-1]:ax.set_xlabel('Time (a.u.)')
-    fig.suptitle(title+'\nAll 30 occupation changes; no clipping or smoothing',y=.997)
+    fig.suptitle(title+'\nAll 30 occupation changes; original output (residual has linear interpolation)',y=.997)
     fig.tight_layout(rect=(0,0,1,.966));fig.savefig(destination,dpi=135);plt.close(fig)
 
 
@@ -103,6 +103,10 @@ def analyze(directory):
             record['reference'],record['reference_info']=load_reference(folder/'reference-observables.dat',30,15,8000,.5)
         ready[entry['job']]=record
         states.append({'job':entry['job'],'role':entry['role'],'local_status':'complete and validated',
+                       'wall_seconds':float(re.search(r'wall_seconds=([\d.]+)',(folder/'time.txt').read_text())[1]),
+                       'reference_seconds':float(re.search(r'reference_seconds=([\d.]+)',log)[1]),
+                       'sampling_seconds':float(re.search(r'sampling_seconds=([\d.]+)',log)[1]),
+                       'ranks':int(entry['ranks']),
                        'max_particle_error':float(abs(data[:,4:].sum(axis=1)-15).max()),
                        'minimum_occupation':float(data[:,4:].min()),'maximum_occupation':float(data[:,4:].max()),
                        'max_rank_peak_mib':int(re.search(r'max_rank_peak_rss_kb=(\d+)',log)[1])/1024,
@@ -146,6 +150,39 @@ def analyze(directory):
             report[label]={'definition':'RMS(reference384 - initial) / RMS(reference384 - comparison); not absolute QM fitting',
                            'max_orbital_difference':float(abs(ref-other).max()),'windows':windows(t,ref-initial,ref-other,active)}
     samples=[rec for rec in ready.values() if rec['entry']['role']=='sample384']
+    if samples and 'reference384' in reference_by_role:
+        reference=reference_by_role['reference384']['reference'][:,4:]
+        single=[]
+        for rec in samples:
+            delta=rec['data'][:,4:]-reference
+            single.append({'job':rec['entry']['job'],'seed':rec['entry']['seed'],
+                'max_orbital_difference_to_reference':float(abs(delta).max()),
+                'windows':windows(t,reference-initial,delta,active),
+                'notice':'Signal/reference-difference ratio is a diagnostic, not a true QM fitting score. Physical residual and numerical noise are not separated by this statistic.'})
+        report['single_run_reference_diagnostics']=single
+        rec=samples[0];delta=rec['data'][:,4:]-reference;ww=single[0]['windows']
+        curves=[('D3/F384 reference',reference,'#314751','-'),
+                (f"1 million paths, seed {rec['entry']['seed']}",rec['data'][:,4:],'#bc7448','-')]
+        plot_orbitals(t,curves,figure_dir/'large_4000_first_million_all_orbitals.png',
+            '30 orbitals / 15 electrons | First million-path run vs bounded reference',initial)
+        fig,axes=plt.subplots(2,2,figsize=(12,8))
+        axes[0,0].plot(t,reference[:,0]-1,color='#314751',lw=.8,label='D3/F384 reference')
+        axes[0,0].plot(t,rec['data'][:,4]-1,color='#bc7448',lw=.55,label='Million-path result')
+        axes[0,0].set(title='Impurity occupation change',xlabel='Time (a.u.)',ylabel='n0 - 1');axes[0,0].legend(fontsize=8)
+        axes[0,1].plot(t,delta[:,0],color='#bc7448',lw=.5)
+        axes[0,1].set(title='Poisson minus bounded reference (impurity)',xlabel='Time (a.u.)',ylabel='Occupation difference')
+        centers=np.arange(50,4000,100)
+        axes[1,0].semilogy(centers,[w['Q_active'] for w in ww],label='All active orbitals')
+        axes[1,0].semilogy(centers,[w['Q_weakest_active'] for w in ww],label='Weakest active orbital')
+        axes[1,0].axhline(10,color='#b44c49',ls='--',lw=1)
+        axes[1,0].set(title='Signal / reference-difference diagnostic',xlabel='100-au window midpoint',ylabel='Ratio (NOT Q against full QM)');axes[1,0].legend(fontsize=8)
+        d=[r for r in states if r['job'] in ['647702','647703',rec['entry']['job']]]
+        bars=axes[1,1].bar(np.arange(len(d)),[r['wall_seconds']/3600 for r in d],color=['#3e8b80','#8c9aaa','#bc7448'])
+        for bar,r in zip(bars,d):axes[1,1].text(bar.get_x()+bar.get_width()/2,bar.get_height(),f"{bar.get_height():.2f} h\\n{r['max_rank_peak_mib']:.1f} MiB/rank".replace('\\n','\n'),ha='center',va='bottom',fontsize=8)
+        axes[1,1].set(xticks=np.arange(len(d)),xticklabels=['Reference F384','Reference F512','Sampling 1M'][:len(d)],ylabel='Wall hours, 128 ranks',title='Measured stages; sampling reuses F384 reference',ylim=(0,max(r['wall_seconds']/3600 for r in d)*1.23))
+        for ax in axes.flat:ax.grid(alpha=.15)
+        fig.suptitle('30 orbitals / 15 electrons | Complete 0–4000 au | First million-path result\nLate stochastic fluctuations remain; bounded-reference agreement does not prove full-space accuracy',fontsize=11)
+        fig.tight_layout(rect=(0,0,1,.92));fig.savefig(figure_dir/'large_4000_first_million_diagnostics.png',dpi=150);plt.close(fig)
     if len(samples)==3:
         seeds=[rec['entry']['seed'] for rec in samples]
         if len(set(seeds))!=3:raise ValueError('repeated seeds cannot establish independent repeatability')

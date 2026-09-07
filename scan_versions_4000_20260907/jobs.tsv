@@ -1,0 +1,7 @@
+version	binary	job	steps	paths	orbitals	electrons	ranks	seed
+v093	na_mpi_v093_final.out	647800	8000	10000	10	5	64	1158001
+v096	na_mpi_v096_stratified_label.out	647801	8000	10000	10	5	64	1158001
+v098	na_mpi_v098_stratified_kondo.out	647802	8000	10000	10	5	64	1158001
+v103	na_mpi_v103_replicated_rqmc_clean.out	647803	8000	10000	10	5	64	1158001
+v109	na_mpi_v109_nested_split.out	647804	8000	10000	10	5	64	1158001
+v114	na_mpi_v114_signed_csr.out	647805	8000	10000	10	5	64	1158001
