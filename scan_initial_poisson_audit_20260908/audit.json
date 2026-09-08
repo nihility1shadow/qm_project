@@ -1,0 +1,114 @@
+{
+  "scope": "Initial-source and stored-file audit; no original executable was timed or memory-profiled.",
+  "initial_tag": "v0.1.0",
+  "initial_commit": "9ccb374af3704e048a2f6c5753ba12c46d662311",
+  "initial_import_date": "2026-06-14",
+  "provenance": [
+    {
+      "path": "sources/ahm-cs-mb-v0.1.0.cpp",
+      "git_spec": "v0.1.0:ahm-cs-mb.cpp",
+      "git_blob": "b8e9d700777fc78cd4dbdc12fd66c2bba60e3aa0",
+      "original_sha256": "d6afe74787d462afe10f9ff25b8c3044b5cb54369c5c795172b639c31f52ae42"
+    },
+    {
+      "path": "sources/ahm-mb-sep-before-v030.cpp",
+      "git_spec": "v0.10.0:archive/ahm-mb-sep-before-v030.cpp",
+      "git_blob": "3ec817f16c5243888e2ef590bbc86f9c8fd7645e",
+      "original_sha256": "a735f4c5e24bdd2c41c6143866abf48809640d8f79511175af8fa99506f28762"
+    },
+    {
+      "path": "sources/yyy-inlines-v0.1.0.h",
+      "git_spec": "v0.1.0:yyy_inlines.h",
+      "git_blob": "716ccf4288d60f030c44ecd31fbfe0d926037082",
+      "original_sha256": "283d11109d171ed7562965c1ecd4ee2f3063666f61ecf76a9bf249cfd83414f0"
+    },
+    {
+      "path": "sources/Johnson-path-sampler-v0.1.0.cpp",
+      "git_spec": "v0.1.0:Johnson-path-sampler.cpp",
+      "git_blob": "4b8cdf7e5f9280d151ccbd2bff2340b4e2013327",
+      "original_sha256": "998bbfd7d2a149eda8e6e898a2b845ac4c0d301d27f8c9474105df5d7709a218"
+    },
+    {
+      "path": "initial-import-output.dat",
+      "git_spec": "v0.1.0:text 1000 10 5 (0).dat",
+      "git_blob": "f74dc13852032711e8aa5bcc9f912f4bd7e51b4a",
+      "original_sha256": "44c1f5335ffd360c7975072f8efbd280a77e771cd8cf68027d48a63d95025326"
+    },
+    {
+      "path": "initial-import-qm.dat",
+      "git_spec": "v0.1.0:ahm-qm-s10-n5.dat",
+      "git_blob": "0b37b266134018879b8faba1954ee7148d4a91d9",
+      "original_sha256": "ca32e5dfca4181fe03362240f5c369b21447b33cb32fe925b4ae2ba07d3f066c"
+    }
+  ],
+  "variant_distinction": "Initial v0.1.0 implements MBpoisson storing time-resolved full-basis wavefunctions. The separately preserved original SepMBpoisson directly estimates observables and does not allocate that wavefunction array. Neither should be identified as v0.93.",
+  "initial_snapshot_incomplete_for_standalone_build": "Initial tree does not contain a main program, build recipe or implementations for all declared model/nuclear routines; Johnson .cpp is a class declaration placeholder and yyy_inlines.h has an invalid two-argument malloc call.",
+  "archived_output": {
+    "shape": [
+      201,
+      14
+    ],
+    "printed_time_range": [
+      0.0,
+      100.0
+    ],
+    "initial_particle_sum": 5.0,
+    "first_nonzero_row_particle_sum": 0.004558401689589001,
+    "last_row_particle_sum": 2.384775984092238e-101,
+    "minimum_particle_sum": -4.652869272907721e-06,
+    "negative_particle_sum_rows": 90,
+    "maximum_particle_sum_deviation_from_5": 5.000004652869273,
+    "QM_max_particle_sum_deviation_from_5": 8.694200914760586e-11,
+    "matches_archived_QM_bath_header": true,
+    "matches_current_QM_bath_header": false,
+    "initial_impurity_energy_Ha": 0.13780996409462332,
+    "current_impurity_energy_Ha": -0.6319,
+    "initial_bath_coupling_Ha": 0.0033333333333333335,
+    "current_bath_coupling_Ha": 0.00018257418583505537,
+    "warning": "Output filename/build provenance and actual physical-time mapping are not established. Original SepMB stores prb[j/nbloc] but prints t*dt. Do not relabel this file to 4000 au or compute a trustworthy matched-Q score from row alignment. Archived QM is also only historical data, not revalidated truth."
+  },
+  "capacity_assumptions": {
+    "nstep": 8000,
+    "dt": 0.5,
+    "time_range_au": [
+      0,
+      4000
+    ],
+    "nuclear_grid_points": 1024,
+    "complex_bytes": 16,
+    "stored_time_slices": 1601,
+    "notice": "Component-size estimates under unified dimensions, not measured RSS or successfully allocated memory. Full-basis integer/index limits can fail before allocation. These arrays belong to MBpoisson, NOT original SepMBpoisson."
+  },
+  "capacity_estimates": [
+    {
+      "orbitals": 10,
+      "electrons": 5,
+      "determinants": 252,
+      "grid_QM_one_wavefunction_bytes": 4128768,
+      "initial_MB_wf_array_bytes": 6610157568,
+      "initial_MB_MPI_wf_plus_avg_arrays_bytes_per_rank": 13220315136,
+      "initial_MB_wf_array_GiB": 6.15618896484375
+    },
+    {
+      "orbitals": 30,
+      "electrons": 15,
+      "determinants": 155117520,
+      "grid_QM_one_wavefunction_bytes": 2541445447680,
+      "initial_MB_wf_array_bytes": 4068854161735680,
+      "initial_MB_MPI_wf_plus_avg_arrays_bytes_per_rank": 8137708323471360,
+      "initial_MB_wf_array_GiB": 3789415.733642578
+    },
+    {
+      "orbitals": 50,
+      "electrons": 25,
+      "determinants": 126410606437752,
+      "grid_QM_one_wavefunction_bytes": 2071111375876128768,
+      "initial_MB_wf_array_bytes": 3315849312777682157568,
+      "initial_MB_MPI_wf_plus_avg_arrays_bytes_per_rank": 6631698625555364315136,
+      "initial_MB_wf_array_GiB": 3088125319013.076
+    }
+  ],
+  "original_runtime_seconds": null,
+  "original_process_peak_rss_bytes": null,
+  "original_matched_4000_Q": null
+}

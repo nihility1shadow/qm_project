@@ -73,3 +73,5 @@ D2 的一万路径结果仍出现 −2.195e-4 的占据数，最弱活跃轨道�
 ![QM 与泊松综合比较](scan_versions_4000_20260907/figures/qm_poisson_comparison_4000.png)
 
 原始六版数据见 scan_versions_4000_20260907，QM 资源及 50/25 数据见 scan_v115_generality_20260906，小体系百万路径见 scan_v114_signed_csr_20260906。分析入口：analyze_versions_4000.py、analyze_qm_resources_4000.py、analyze_v115_large_4000.py；汇总图由 plot_qm_poisson_comparison_4000.py 生成。
+
+关于第一版：六版重跑从 v0.93 开始，并不代表 v0.1.0。已另核对最早 MBpoisson 与原始 SepMBpoisson，它们的存储结构不同；源码、初始数据异常、容量估算和缺少的实测依据见 [INITIAL_POISSON_COMPARISON.md](INITIAL_POISSON_COMPARISON.md)。
