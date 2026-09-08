@@ -1,0 +1,542 @@
+{
+  "notice": "Existing no-reference Poisson runs only. No verified 15e30o no-reference long-time output found. These are different budgets, not a fair best-method ranking. No new simulations were launched.",
+  "hash_notice": "SHA256 values refer to the local source bytes at generation time; Git checkout line-ending conversion can change byte hashes without changing numbers.",
+  "runs": [
+    {
+      "name": "5e10o_v093_2500au",
+      "job": "646440",
+      "version": "v0.93",
+      "nel": 5,
+      "norb": 10,
+      "tmax": 2500,
+      "paths": 50000000,
+      "ranks": 384,
+      "seed": 2500824,
+      "folder": "scan_v093_poisson_t2500_20260822/final_50m_job_646440",
+      "config": "run-info.txt",
+      "qm": "scan_v093_poisson_t2500_20260822/pilots/qm_646419_eta03/ahm-qm-s10-n5.dat",
+      "role": "历史单次主结果",
+      "wall_seconds": 53120,
+      "wall_source": "scan_v093_poisson_t2500_20260822/final_report.md",
+      "measurement": "自适应直接采样点 414；其余输出点由原程序插值",
+      "sampling": "后向副本 B = 256→512，随时间线性增加；前向轨道条件求和；精确后向低阶跳跃 = 4",
+      "config_values": {
+        "job_id": "646440",
+        "nodes": "6 tasks=384",
+        "command": "./na_mpi_cloud.out 10 1 50000000 10 5",
+        "AHM_WC_EV": "2.7",
+        "AHM_ETA": "0.30e-6",
+        "AHM_DELE_EV": "-17.194874968839816",
+        "AHM_NSTEP": "5000",
+        "SEP_MB_TMAX": "2500",
+        "SEP_MB_MEASURE_STRIDE": "0",
+        "SEP_MB_BACK_REPLICAS": "512",
+        "SEP_MB_BACK_REPLICAS_MIN": "256",
+        "SEP_MB_BACK_REPLICA_POWER": "1.0",
+        "SEP_MB_STRATIFY_FORWARD_COUNT": "1",
+        "SEP_MB_EXACT_ORBITALS": "1",
+        "SEP_MB_STRATIFY_SINGLE_JUMP_TIME": "1",
+        "SEP_MB_SAMPLE_BACK_ORBITALS": "1",
+        "SEP_MB_EXACT_BACK_JUMPS": "4",
+        "SEP_MB_ALL_ORDER_BACK_DP": "1",
+        "SEP_MB_RECURRENCE_DENSE": "1",
+        "SEP_MB_RECURRENCE_HALF_WIDTH": "80",
+        "SEP_MB_RECURRENCE_STRIDE": "3",
+        "SEP_MB_DETERMINISTIC_FOCK": "0",
+        "SEP_MB_FOCK_STATES": "384"
+      },
+      "actual_sampling_header": "#sampling: jump_strength=4.5643546458763848e-04 jump_probability=4.5622722630164390e-04 log_scale=4.5633132960703235e-04 back_replicas=512 stratify_forward=1 exact_orbitals=1 stratify_single_jump_time=1 sample_back_orbitals=1 exact_back_jumps=4",
+      "max_rank_peak_mib": 12.640625,
+      "memory_aggregate_gib": 4.740234375,
+      "memory_aggregate_kind": "maximum_rank_peak_times_rank_count_upper_bound_not_measured_sum",
+      "minimum_occupation": -1.3643062058896259e-07,
+      "maximum_occupation": 1.000000198121897,
+      "strict_Q": 0.6948802143773282,
+      "Q10_contiguous_end_au": 700,
+      "windows": [
+        {
+          "start": 0,
+          "stop": 100,
+          "minimum_active_Q": 76.75332191702225
+        },
+        {
+          "start": 100,
+          "stop": 200,
+          "minimum_active_Q": 68.88772458247196
+        },
+        {
+          "start": 200,
+          "stop": 300,
+          "minimum_active_Q": 36.90435320912359
+        },
+        {
+          "start": 300,
+          "stop": 400,
+          "minimum_active_Q": 19.596734604777566
+        },
+        {
+          "start": 400,
+          "stop": 500,
+          "minimum_active_Q": 10.018764324814414
+        },
+        {
+          "start": 500,
+          "stop": 600,
+          "minimum_active_Q": 15.721977725287624
+        },
+        {
+          "start": 600,
+          "stop": 700,
+          "minimum_active_Q": 15.935904547223302
+        },
+        {
+          "start": 700,
+          "stop": 800,
+          "minimum_active_Q": 7.8529462469377
+        },
+        {
+          "start": 800,
+          "stop": 900,
+          "minimum_active_Q": 5.660741190420292
+        },
+        {
+          "start": 900,
+          "stop": 1000,
+          "minimum_active_Q": 6.7045755708594665
+        },
+        {
+          "start": 1000,
+          "stop": 1100,
+          "minimum_active_Q": 6.364022143270897
+        },
+        {
+          "start": 1100,
+          "stop": 1200,
+          "minimum_active_Q": 3.5438657226831003
+        },
+        {
+          "start": 1200,
+          "stop": 1300,
+          "minimum_active_Q": 3.3316171629456224
+        },
+        {
+          "start": 1300,
+          "stop": 1400,
+          "minimum_active_Q": 4.695059350968697
+        },
+        {
+          "start": 1400,
+          "stop": 1500,
+          "minimum_active_Q": 2.0100043460921637
+        },
+        {
+          "start": 1500,
+          "stop": 1600,
+          "minimum_active_Q": 4.9667643756361155
+        },
+        {
+          "start": 1600,
+          "stop": 1700,
+          "minimum_active_Q": 2.376500618533524
+        },
+        {
+          "start": 1700,
+          "stop": 1800,
+          "minimum_active_Q": 2.5669782254580378
+        },
+        {
+          "start": 1800,
+          "stop": 1900,
+          "minimum_active_Q": 1.8532046577507808
+        },
+        {
+          "start": 1900,
+          "stop": 2000,
+          "minimum_active_Q": 1.9588554502962432
+        },
+        {
+          "start": 2000,
+          "stop": 2100,
+          "minimum_active_Q": 1.1271775497269776
+        },
+        {
+          "start": 2100,
+          "stop": 2200,
+          "minimum_active_Q": 1.034299510420423
+        },
+        {
+          "start": 2200,
+          "stop": 2300,
+          "minimum_active_Q": 0.8470886119022419
+        },
+        {
+          "start": 2300,
+          "stop": 2400,
+          "minimum_active_Q": 1.2932665863128616
+        },
+        {
+          "start": 2400,
+          "stop": 2500,
+          "minimum_active_Q": 0.6948802143773282
+        }
+      ],
+      "data_file": "scan_v093_poisson_t2500_20260822/final_50m_job_646440/ahm-sepmb-s10-n5-50000000.dat",
+      "sources_sha256": {
+        "scan_v093_poisson_t2500_20260822/final_50m_job_646440/ahm-sepmb-s10-n5-50000000.dat": "00401d3fe46f4b5445f0ba4e2437bfc4b18d381008cf52d0788363a24a97ce72",
+        "scan_v093_poisson_t2500_20260822/final_50m_job_646440/run-info.txt": "37cc8f6295b887a9c21720a2165c75f3744f3815cceafb99cdd908a4d1e36a0a",
+        "scan_v093_poisson_t2500_20260822/final_50m_job_646440/program.out": "51ae8d90fb8f141396a572e1c846721926727395568d6840b267a0302e344615",
+        "scan_v093_poisson_t2500_20260822/final_report.md": "a4ab11b05511e43dd0b01fb6b263b8acd12d3bc73283f59707bdcbc319a57782",
+        "scan_v093_poisson_t2500_20260822/pilots/qm_646419_eta03/ahm-qm-s10-n5.dat": "b6a7f8c4aebfa84b2bf8badb85bf688ad77b55c09c53beceb1b723627cbeb9bf"
+      },
+      "figure": "pure_poisson_figures_20260908/5e10o_v093_2500au_all_orbitals.png"
+    },
+    {
+      "name": "5e10o_v093_4000au",
+      "job": "647800",
+      "version": "v0.93",
+      "nel": 5,
+      "norb": 10,
+      "tmax": 4000,
+      "paths": 10000,
+      "ranks": 64,
+      "seed": 1158001,
+      "folder": "scan_versions_4000_20260907/647800",
+      "config": "config.txt",
+      "qm": "scan_v113_two_buffer_20260905/647656/ahm-qm-s10-n5.dat",
+      "role": "同条件低样本版本基线，未达标",
+      "measurement": "每 4 步直接采样，中间由原程序插值",
+      "sampling": "后向副本 B = 16；前向轨道采样；精确后向低阶跳跃 = 0",
+      "wall_seconds": 39.08,
+      "wall_source": "scan_versions_4000_20260907/647800/time.txt",
+      "config_values": {
+        "AHM_DELE_EV": "-17.194874968839816",
+        "AHM_ETA": "0.30e-6",
+        "AHM_NSTEP": "8000",
+        "AHM_SEED": "1158001",
+        "AHM_WC_EV": "2.7",
+        "SEP_MB_ALL_ORDER_BACK_DP": "1",
+        "SEP_MB_BACK_REPLICA_POWER": "2",
+        "SEP_MB_BACK_REPLICAS": "16",
+        "SEP_MB_BACK_REPLICAS_MIN": "16",
+        "SEP_MB_DETERMINISTIC_FOCK": "0",
+        "SEP_MB_EXACT_BACK_JUMPS": "0",
+        "SEP_MB_EXACT_ORBITALS": "0",
+        "SEP_MB_MEASURE_STRIDE": "4",
+        "SEP_MB_PATH_LOCAL_BASIS": "1",
+        "SEP_MB_RATE_SCALE": "1.5",
+        "SEP_MB_RECURRENCE_DENSE": "1",
+        "SEP_MB_RECURRENCE_STRIDE": "3",
+        "SEP_MB_REFERENCE_DISTANCE": "3",
+        "SEP_MB_REFERENCE_FOCK_STATES": "384",
+        "SEP_MB_REFERENCE_GRID_SPLIT": "1",
+        "SEP_MB_REFERENCE_MAX_STATES": "800000",
+        "SEP_MB_REFERENCE_MPI": "1",
+        "SEP_MB_REFERENCE_OUTPUT": "1",
+        "SEP_MB_REFERENCE_SIGNED_CSR": "1",
+        "SEP_MB_REFERENCE_SPLIT_OPERATOR": "1",
+        "SEP_MB_RQMC_REPLICATES": "4",
+        "SEP_MB_SAMPLE_BACK_ORBITALS": "1",
+        "SEP_MB_STRATIFY_BACK_PATHS": "1",
+        "SEP_MB_STRATIFY_FORWARD_COUNT": "1",
+        "SEP_MB_STRATIFY_FORWARD_ORBITALS": "1",
+        "SEP_MB_STRATIFY_FORWARD_STEPS": "1",
+        "SEP_MB_STRATIFY_SINGLE_JUMP_TIME": "1",
+        "SEP_MB_TMAX": "4000",
+        "SLURM_NTASKS": "64",
+        "SLURM_NTASKS_PER_NODE": "64"
+      },
+      "actual_sampling_header": "#sampling: jump_strength=4.5643546458763848e-04 jump_probability=4.5622722630164390e-04 log_scale=4.5633132960703235e-04 back_replicas=16 stratify_forward=1 exact_orbitals=0 stratify_single_jump_time=1 sample_back_orbitals=1 exact_back_jumps=0",
+      "max_rank_peak_mib": 14.78125,
+      "memory_aggregate_gib": 0.923828125,
+      "memory_aggregate_kind": "maximum_rank_peak_times_rank_count_upper_bound_not_measured_sum",
+      "minimum_occupation": -0.016485033994637376,
+      "maximum_occupation": 1.0326522920975103,
+      "strict_Q": 1.930213247930208e-05,
+      "Q10_contiguous_end_au": 0,
+      "windows": [
+        {
+          "start": 0,
+          "stop": 100,
+          "minimum_active_Q": 0.12125426379288884
+        },
+        {
+          "start": 100,
+          "stop": 200,
+          "minimum_active_Q": 0.036121185481384585
+        },
+        {
+          "start": 200,
+          "stop": 300,
+          "minimum_active_Q": 0.025464221466470077
+        },
+        {
+          "start": 300,
+          "stop": 400,
+          "minimum_active_Q": 0.016482354928996593
+        },
+        {
+          "start": 400,
+          "stop": 500,
+          "minimum_active_Q": 0.009537549443924558
+        },
+        {
+          "start": 500,
+          "stop": 600,
+          "minimum_active_Q": 0.006616232377981371
+        },
+        {
+          "start": 600,
+          "stop": 700,
+          "minimum_active_Q": 0.004942844338778766
+        },
+        {
+          "start": 700,
+          "stop": 800,
+          "minimum_active_Q": 0.0037199744336042606
+        },
+        {
+          "start": 800,
+          "stop": 900,
+          "minimum_active_Q": 0.002496320846993029
+        },
+        {
+          "start": 900,
+          "stop": 1000,
+          "minimum_active_Q": 0.001882959399264432
+        },
+        {
+          "start": 1000,
+          "stop": 1100,
+          "minimum_active_Q": 0.001951600322807138
+        },
+        {
+          "start": 1100,
+          "stop": 1200,
+          "minimum_active_Q": 0.0012785251421877264
+        },
+        {
+          "start": 1200,
+          "stop": 1300,
+          "minimum_active_Q": 0.0010492367802848812
+        },
+        {
+          "start": 1300,
+          "stop": 1400,
+          "minimum_active_Q": 0.0008527758119376377
+        },
+        {
+          "start": 1400,
+          "stop": 1500,
+          "minimum_active_Q": 0.0006415892274790568
+        },
+        {
+          "start": 1500,
+          "stop": 1600,
+          "minimum_active_Q": 0.0004861217747624607
+        },
+        {
+          "start": 1600,
+          "stop": 1700,
+          "minimum_active_Q": 0.00040585593254272365
+        },
+        {
+          "start": 1700,
+          "stop": 1800,
+          "minimum_active_Q": 0.0003278507058293201
+        },
+        {
+          "start": 1800,
+          "stop": 1900,
+          "minimum_active_Q": 0.00025870543481152394
+        },
+        {
+          "start": 1900,
+          "stop": 2000,
+          "minimum_active_Q": 0.00019099580894663454
+        },
+        {
+          "start": 2000,
+          "stop": 2100,
+          "minimum_active_Q": 0.00017397569857245922
+        },
+        {
+          "start": 2100,
+          "stop": 2200,
+          "minimum_active_Q": 0.00013021547620276186
+        },
+        {
+          "start": 2200,
+          "stop": 2300,
+          "minimum_active_Q": 0.00010210405933411214
+        },
+        {
+          "start": 2300,
+          "stop": 2400,
+          "minimum_active_Q": 7.621581352850918e-05
+        },
+        {
+          "start": 2400,
+          "stop": 2500,
+          "minimum_active_Q": 6.695657852430473e-05
+        },
+        {
+          "start": 2500,
+          "stop": 2600,
+          "minimum_active_Q": 6.169452577764466e-05
+        },
+        {
+          "start": 2600,
+          "stop": 2700,
+          "minimum_active_Q": 5.61101612825537e-05
+        },
+        {
+          "start": 2700,
+          "stop": 2800,
+          "minimum_active_Q": 4.5182857770894755e-05
+        },
+        {
+          "start": 2800,
+          "stop": 2900,
+          "minimum_active_Q": 4.5595113139613265e-05
+        },
+        {
+          "start": 2900,
+          "stop": 3000,
+          "minimum_active_Q": 3.6010794534531466e-05
+        },
+        {
+          "start": 3000,
+          "stop": 3100,
+          "minimum_active_Q": 3.5608812464024845e-05
+        },
+        {
+          "start": 3100,
+          "stop": 3200,
+          "minimum_active_Q": 3.2283013857504116e-05
+        },
+        {
+          "start": 3200,
+          "stop": 3300,
+          "minimum_active_Q": 3.379899740445961e-05
+        },
+        {
+          "start": 3300,
+          "stop": 3400,
+          "minimum_active_Q": 2.4649286730435287e-05
+        },
+        {
+          "start": 3400,
+          "stop": 3500,
+          "minimum_active_Q": 2.651974747913355e-05
+        },
+        {
+          "start": 3500,
+          "stop": 3600,
+          "minimum_active_Q": 2.4474242167033767e-05
+        },
+        {
+          "start": 3600,
+          "stop": 3700,
+          "minimum_active_Q": 2.2110481392194275e-05
+        },
+        {
+          "start": 3700,
+          "stop": 3800,
+          "minimum_active_Q": 2.0127034467808323e-05
+        },
+        {
+          "start": 3800,
+          "stop": 3900,
+          "minimum_active_Q": 1.930213247930208e-05
+        },
+        {
+          "start": 3900,
+          "stop": 4000,
+          "minimum_active_Q": 1.955872660333783e-05
+        }
+      ],
+      "data_file": "scan_versions_4000_20260907/647800/ahm-sepmb-s10-n5-10000.dat",
+      "sources_sha256": {
+        "scan_versions_4000_20260907/647800/ahm-sepmb-s10-n5-10000.dat": "e071ec0b89fd27d4d87f6902b882675a43f5ba650e0b5039b10e4ce2ca6529fc",
+        "scan_versions_4000_20260907/647800/config.txt": "172f5a30e6460220146953616e8845ae2b679de32f482cfab64069fe08a5ce8f",
+        "scan_versions_4000_20260907/647800/program.out": "7954be370af49edacd08786b5bb079d04b0f81b98057e61b68055518d1709d97",
+        "scan_versions_4000_20260907/647800/time.txt": "fcdc8276151aa7de55067091f97d74300a8737ae42e73189ee9e1de7d7556fbe",
+        "scan_v113_two_buffer_20260905/647656/ahm-qm-s10-n5.dat": "e6e177883557ea2f6cf965d06614cf8cbb4e884664bc6796b9eee049b4141063"
+      },
+      "figure": "pure_poisson_figures_20260908/5e10o_v093_4000au_all_orbitals.png"
+    },
+    {
+      "name": "25e50o_v114_noref_4000au",
+      "job": "647782",
+      "version": "v1.14（关闭参考）",
+      "nel": 25,
+      "norb": 50,
+      "tmax": 4000,
+      "paths": 1000,
+      "ranks": 64,
+      "seed": 1155099,
+      "folder": "scan_v115_generality_20260906/647782",
+      "config": "config.txt",
+      "qm": null,
+      "role": "关闭参考的低样本试跑，严重失效",
+      "measurement": "每 4 步直接采样，中间由原程序插值",
+      "sampling": "后向副本 B = 16；速率倍率 = 1.5；RQMC = 4；按步分层开启",
+      "wall_seconds": 470.83,
+      "wall_source": "scan_v115_generality_20260906/647782/time.txt",
+      "config_values": {
+        "AHM_DELE_EV": "-17.194874968839816",
+        "AHM_ETA": "0.30e-6",
+        "AHM_NSTEP": "8000",
+        "AHM_SEED": "1155099",
+        "AHM_WC_EV": "2.7",
+        "SEP_MB_ALL_ORDER_BACK_DP": "1",
+        "SEP_MB_BACK_REPLICA_POWER": "2",
+        "SEP_MB_BACK_REPLICAS": "16",
+        "SEP_MB_BACK_REPLICAS_MIN": "16",
+        "SEP_MB_DETERMINISTIC_FOCK": "0",
+        "SEP_MB_EXACT_BACK_JUMPS": "0",
+        "SEP_MB_EXACT_ORBITALS": "0",
+        "SEP_MB_MEASURE_STRIDE": "4",
+        "SEP_MB_PATH_LOCAL_BASIS": "1",
+        "SEP_MB_RATE_SCALE": "1.5",
+        "SEP_MB_RECURRENCE_DENSE": "1",
+        "SEP_MB_RECURRENCE_STRIDE": "3",
+        "SEP_MB_REFERENCE_DISTANCE": "-1",
+        "SEP_MB_REFERENCE_FOCK_STATES": "384",
+        "SEP_MB_REFERENCE_GRID_SPLIT": "1",
+        "SEP_MB_REFERENCE_MAX_STATES": "800000",
+        "SEP_MB_REFERENCE_MPI": "1",
+        "SEP_MB_REFERENCE_OUTPUT": "1",
+        "SEP_MB_REFERENCE_SIGNED_CSR": "1",
+        "SEP_MB_REFERENCE_SPLIT_OPERATOR": "1",
+        "SEP_MB_RQMC_REPLICATES": "4",
+        "SEP_MB_SAMPLE_BACK_ORBITALS": "1",
+        "SEP_MB_STRATIFY_BACK_PATHS": "1",
+        "SEP_MB_STRATIFY_FORWARD_COUNT": "1",
+        "SEP_MB_STRATIFY_FORWARD_ORBITALS": "1",
+        "SEP_MB_STRATIFY_FORWARD_STEPS": "1",
+        "SEP_MB_STRATIFY_SINGLE_JUMP_TIME": "1",
+        "SEP_MB_TMAX": "4000",
+        "SLURM_NTASKS": "64",
+        "SLURM_NTASKS_PER_NODE": "64"
+      },
+      "actual_sampling_header": "#sampling: physical_jump_rate=1.9561519910898787e-03 sampling_jump_rate=2.9342279866348183e-03 rate_scale=1.5000000000000000e+00 jump_strength=1.4671139933174092e-03 jump_probability=1.4649647230724732e-03 log_scale=1.4660388330427051e-03 back_replicas=16 stratify_forward=1 stratify_forward_steps=1 stratify_forward_orbitals=1 stratify_back_paths=1 exact_orbitals=0 stratify_single_jump_time=1 sample_back_orbitals=1 exact_back_jumps=0",
+      "max_rank_peak_mib": 26.13671875,
+      "memory_aggregate_gib": 1.5057411193847656,
+      "memory_aggregate_kind": "sum_of_individual_peaks_not_simultaneous_RSS",
+      "minimum_occupation": -2895.503649351546,
+      "maximum_occupation": 2961.461843376081,
+      "strict_Q": null,
+      "Q10_contiguous_end_au": null,
+      "windows": [],
+      "data_file": "scan_v115_generality_20260906/647782/ahm-sepmb-s50-n25-1000.dat",
+      "sources_sha256": {
+        "scan_v115_generality_20260906/647782/ahm-sepmb-s50-n25-1000.dat": "7095f8a9648030d0cdfcc3c14538b1ebbeeb8e3e10d49fbc7736ac237340e4da",
+        "scan_v115_generality_20260906/647782/config.txt": "d9b385a9de517e45db6677d4de1642bf772c6d4f09c82b48e274e73f1a277325",
+        "scan_v115_generality_20260906/647782/program.out": "caa0c77861fb3a4afce9003720c115a5004be56c1fd0387bd3d02609750bad50",
+        "scan_v115_generality_20260906/647782/time.txt": "b0e4cd328edadb5de6824dac796794e7790353d81d0ea5633cb42a21007124d3"
+      },
+      "figure": "pure_poisson_figures_20260908/25e50o_v114_noref_4000au_all_orbitals.png"
+    }
+  ]
+}
