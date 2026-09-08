@@ -88,7 +88,9 @@ def main():
         vals=[r['resources']['wall_seconds']/60 for r in report['jobs']]
         bars=axes[1,0].bar(xs,vals,color=colors)
         for bar,val in zip(bars,vals):axes[1,0].text(bar.get_x()+bar.get_width()/2,val,f'{val:.2f}',ha='center',va='bottom')
-        axes[1,0].axhline(3287.21/60,color='#444',ls='--',label='QM: 54.79 min, 1 rank')
+        qm_resources=json.loads((ROOT/'scan_v115_generality_20260906/qm_resource_validation.json').read_text(encoding='utf-8-sig'))
+        qm_minutes=qm_resources['process_wall_seconds']/60
+        axes[1,0].axhline(qm_minutes,color='#444',ls='--',label=f"QM {qm_resources['job']}: {qm_minutes:.2f} min, 1 rank")
         axes[1,0].set(xticks=xs,xticklabels=labels,ylabel='Elapsed minutes',title='Each Poisson run: 64 ranks, cached reference',ylim=(0,75));axes[1,0].legend(fontsize=8)
         vals=[r['resources']['max_rank_peak_mib'] for r in report['jobs']]
         bars=axes[1,1].bar(xs,vals,color=colors)
