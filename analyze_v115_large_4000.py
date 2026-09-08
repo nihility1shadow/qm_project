@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from analyze_v113_large_4000 import validate_grid,load_reference
+from analyze_v113_large_4000 import validate_grid,load_reference,windows
+from analyze_versions_4000 import bath
 from analyze_midpoint_probability import midpoint_count
 ROOT=Path(__file__).resolve().parent
 OUT=ROOT/'scan_v115_generality_20260906';FIG=OUT/'figures'
@@ -51,13 +52,32 @@ def read_run(row):
     probability=float(re.search(r'jump_probability=([0-9.eE+-]+)',sampling)[1])
     effective=midpoint_count(paths,probability)/paths
     stats['fixed_step_probability_audit']={'nominal':probability,'actual_midpoint_marginal':effective,'relative_event_probability_error':effective/probability-1,'notice':'Event-probability rounding error, NOT the physical occupation error. This low-path pilot cannot establish sampling accuracy.'}
-    if depth>=0 and row['reference_job']=='-':
-        reference,reference_stats=load_reference(folder/'reference-observables.dat',norb,nel,steps,.5)
-        stats.update(reference_stats)
-        stats['max_pilot_difference_to_reference']=float(abs(data[:,4:]-reference[:,4:]).max())
     initial=np.r_[np.ones(nel),np.zeros(norb-nel)]
-    return data,reference,{'job':row['job'],'role':row['role'],'status':'complete data validated; accuracy NOT accepted',
-        'accuracy_status':'Low-path pilot: visible nonphysical fluctuations and fixed-step event rounding; not a high-accuracy production result',
+    if depth>=0:
+        reference_folder=folder if row['reference_job']=='-' else OUT/row['reference_job']
+        if reference_folder!=folder and 'loaded=1 rows=8001 parameter_key_and_checksum=verified' not in log:
+            raise ValueError('Consumer did not verify reference cache')
+        reference,reference_stats=load_reference(reference_folder/'reference-observables.dat',norb,nel,steps,.5)
+        if reference_stats['reference_states']!=states or reference_stats['fock_levels']!=fock:
+            raise ValueError('Loaded reference geometry mismatch')
+        if reference_folder!=folder:
+            producer_file=next(reference_folder.glob(f'ahm-sepmb-s{norb}-n{nel}-*.dat'))
+            if not np.array_equal(bath(producer_file),bath(folder/f'ahm-sepmb-s{norb}-n{nel}-{paths}.dat')):
+                raise ValueError('Consumer and producer bath differ')
+        stats.update(reference_stats)
+        stats['reference_source_job']=reference_folder.name
+        difference=data[:,4:]-reference[:,4:]
+        stats['max_pilot_difference_to_reference']=float(abs(difference).max())
+        stats['reference_difference_windows']=windows(data[:,0],reference[:,4:]-initial,difference,[0,*range(nel,norb)])
+        finite=[w['Q_weakest_active'] for w in stats['reference_difference_windows'] if w['Q_weakest_active'] is not None]
+        stats['worst_active_orbital_reference_difference_ratio']=min(finite) if finite else None
+        stats['reference_diagnostic_notice']='Signal/reference-difference ratio, NOT fitting against full QM. Shared bias and undersampled rare paths remain possible.'
+    bound_violation=max(0.,float(-data[:,4:].min()),float(data[:,4:].max()-1))
+    return data,reference,{'job':row['job'],'role':row['role'],'status':'complete data validated; high precision not certified',
+        'high_precision_verified':False,
+        'occupation_bound_violation':bound_violation,
+        'bound_violation_above_1e_10':bound_violation>1e-10,
+        'accuracy_status':'Reference truncation, sampling and time-step errors need separate validation; completed data is not an accuracy certificate',
         'reference_states':states,'resources':resources(folder,depth>=0),**stats,
         'maximum_occupation_change':float(abs(data[:,4:]-initial).max()),
         'minimum_occupation':float(data[:,4:].min()),'maximum_occupation':float(data[:,4:].max()),
@@ -97,6 +117,6 @@ def main():
         fig.tight_layout();fig.savefig(FIG/f'{a}_vs_{b}.png',dpi=150);plt.close(fig)
     report['reference_comparisons']=comparisons
     (OUT/'long_4000_validation.json').write_text(json.dumps(report,indent=2,allow_nan=False))
-    print(json.dumps({'runs':report['runs'],'reference_comparisons':comparisons},indent=2))
+    print(json.dumps({'runs':[{k:v for k,v in row.items() if k!='reference_difference_windows'} for row in report['runs']],'reference_comparisons':comparisons},indent=2))
 
 if __name__=='__main__':main()
