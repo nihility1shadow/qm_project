@@ -1,0 +1,14 @@
+[
+  "C:\\anaconda\\python.exe",
+  "E:\\project_qm\\experiments\\poisson_slater_stream.py",
+  "--method",
+  "stratified-lattice",
+  "--time-sampling",
+  "scaled",
+  "--pairs",
+  "4096",
+  "--seed",
+  "1160101",
+  "--out",
+  "scan_slater_stream_100au_20260909/final_seed1"
+]

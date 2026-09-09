@@ -1,0 +1,38 @@
+{
+  "checks": 280,
+  "max_state_difference": 1.6091054089879258e-15,
+  "max_observable_difference": 1.176836406102666e-14,
+  "tested_orbitals_electrons": [
+    [
+      3,
+      1
+    ],
+    [
+      4,
+      2
+    ],
+    [
+      10,
+      5
+    ],
+    [
+      30,
+      15
+    ],
+    [
+      50,
+      25
+    ],
+    [
+      50,
+      1
+    ],
+    [
+      50,
+      49
+    ]
+  ],
+  "jacobian_moment_max_error": 2.220446049250313e-15,
+  "conditional_poisson_bins_checked": 64,
+  "status": "PASS; kernel, estimator and sampler checks; physical accuracy assessed separately against full QM"
+}

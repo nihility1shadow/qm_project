@@ -1,0 +1,827 @@
+{
+  "scope": "5 electrons / 10 orbitals, 0-100 au, 101 exact observation times; original fixed bath",
+  "physical_parameters": {
+    "norb": 10,
+    "nel": 5,
+    "bath": "original",
+    "eta": 3e-07,
+    "wc_ev": 2.7,
+    "energies": [
+      -0.6319,
+      -0.2149835347275817,
+      -0.2035009541371695,
+      -0.19174383856145005,
+      -0.17971845498729938,
+      -0.16743065979567368,
+      -0.15488594173819073,
+      -0.14208945886726068,
+      -0.12904607047156363,
+      -0.1157603648533132
+    ],
+    "coupling": [
+      0.0,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537
+    ],
+    "frequency": 0.003674932375856621,
+    "mass": 14583.1067146087,
+    "displacement": 10.352963924025582,
+    "occupied": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "source_model": "v1.14-signed-csr original bath; semicircle is separately labelled"
+  },
+  "active_orbitals": [
+    0,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "near_stationary_orbitals": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "q_definition": "RMS(QM occupation minus initial occupation) / RMS(estimator minus QM), per orbital, one full 100-au window",
+  "active_selection": "Inherited unchanged from the prior 4000-au comparison; all 10 orbitals remain visible and have metrics",
+  "independent_runs": [
+    {
+      "case": "final_seed1",
+      "seed": 1160101,
+      "continuous_qm": {
+        "q_per_orbital": [
+          115.8088850217404,
+          0.010840004202072076,
+          0.015103549893801221,
+          0.022823693190971994,
+          0.03227920100314454,
+          100.41798543427966,
+          92.50971477979311,
+          93.05373133203884,
+          104.58033196030058,
+          130.73377752426364
+        ],
+        "signal_rms_per_orbital": [
+          4.5026996973586317e-07,
+          4.225248432145273e-12,
+          6.634278246265818e-12,
+          1.0512409371597254e-11,
+          1.5709224650816556e-11,
+          9.593658036312502e-08,
+          9.317397899022735e-08,
+          9.047676419844451e-08,
+          8.784695372321507e-08,
+          8.528625277905354e-08
+        ],
+        "rmse_per_orbital": [
+          3.888043388478661e-09,
+          3.8978291459865055e-10,
+          4.3925291027036294e-10,
+          4.6059195081344157e-10,
+          4.866670847672535e-10,
+          9.553724857975012e-10,
+          1.0071804805799631e-09,
+          9.723066759741308e-10,
+          8.399949787553015e-10,
+          6.52365856736793e-10
+        ],
+        "worst_active_q": 92.50971477979311,
+        "worst_all_orbital_q": 0.010840004202072076,
+        "max_absolute_error_all_orbitals": 1.236902136270146e-08,
+        "active_aggregate_q": 112.919996989235
+      },
+      "historical_grid_qm": {
+        "q_per_orbital": [
+          63.17168011848171,
+          0.010225455078644901,
+          0.014358671009152132,
+          0.02184137652217802,
+          0.031015285084396153,
+          60.84526687074008,
+          57.10712646788398,
+          55.58661398903711,
+          56.63848750733912,
+          59.57575405368773
+        ],
+        "signal_rms_per_orbital": [
+          4.576191296770183e-07,
+          3.985016952875856e-12,
+          6.305583342245503e-12,
+          1.0056435665887943e-11,
+          1.508750924517245e-11,
+          9.741307310176462e-08,
+          9.465100722559913e-08,
+          9.195430768907847e-08,
+          8.932498974211972e-08,
+          8.676477957305957e-08
+        ],
+        "rmse_per_orbital": [
+          7.244055070543166e-09,
+          3.8971536447294813e-10,
+          4.3914811741465214e-10,
+          4.6043048869545867e-10,
+          4.864539920918864e-10,
+          1.6009967268071865e-09,
+          1.6574289949403978e-09,
+          1.6542527254351894e-09,
+          1.5771076113313431e-09,
+          1.4563773627585137e-09
+        ],
+        "worst_active_q": 55.58661398903711,
+        "worst_all_orbital_q": 0.010225455078644901,
+        "max_absolute_error_all_orbitals": 1.3395872966448508e-08,
+        "active_aggregate_q": 62.18060770315237
+      },
+      "wall_seconds": 112.57180570000128,
+      "cpu_seconds": 110.78125,
+      "peak_rss_mib": 78.01953125,
+      "sampled_pairs": 32768,
+      "pairs_per_stratum": 4096,
+      "batch": 128,
+      "max_particle_number_error": 8.881784197001252e-16,
+      "source_sha256": "1485da5528f014b5d84fa9ee1452936a40f4c74a7fc5d9d23b534fd6c31677a9"
+    },
+    {
+      "case": "final_seed2",
+      "seed": 1160102,
+      "continuous_qm": {
+        "q_per_orbital": [
+          92.05987735984822,
+          0.006073008654428369,
+          0.010219552869306805,
+          0.01901116962365338,
+          0.03628106975782393,
+          89.4274677955867,
+          98.2529432957727,
+          117.46851505845771,
+          132.14614862988603,
+          117.0706885620931
+        ],
+        "signal_rms_per_orbital": [
+          4.5026996973586317e-07,
+          4.225248432145273e-12,
+          6.634278246265818e-12,
+          1.0512409371597254e-11,
+          1.5709224650816556e-11,
+          9.593658036312502e-08,
+          9.317397899022735e-08,
+          9.047676419844451e-08,
+          8.784695372321507e-08,
+          8.528625277905354e-08
+        ],
+        "rmse_per_orbital": [
+          4.8910555026683946e-09,
+          6.957422049883413e-10,
+          6.491750012068602e-10,
+          5.529596326634154e-10,
+          4.32986809806756e-10,
+          1.0727865020445044e-09,
+          9.48307255384136e-10,
+          7.702214006316426e-10,
+          6.64771199418427e-10,
+          7.285021880931245e-10
+        ],
+        "worst_active_q": 89.4274677955867,
+        "worst_all_orbital_q": 0.006073008654428369,
+        "max_absolute_error_all_orbitals": 1.4382869562012957e-08,
+        "active_aggregate_q": 94.09176489160343
+      },
+      "historical_grid_qm": {
+        "q_per_orbital": [
+          64.47906162232535,
+          0.005728832903650289,
+          0.009716165811249294,
+          0.018196759873784857,
+          0.03488334445053487,
+          64.52835165604417,
+          64.10747515980427,
+          62.40116825153494,
+          57.474378487699646,
+          50.72285301506147
+        ],
+        "signal_rms_per_orbital": [
+          4.576191296770183e-07,
+          3.985016952875856e-12,
+          6.305583342245503e-12,
+          1.0056435665887943e-11,
+          1.508750924517245e-11,
+          9.741307310176462e-08,
+          9.465100722559913e-08,
+          9.195430768907847e-08,
+          8.932498974211972e-08,
+          8.676477957305957e-08
+        ],
+        "rmse_per_orbital": [
+          7.097174154882108e-09,
+          6.956071192679908e-10,
+          6.489785646664193e-10,
+          5.52649797856361e-10,
+          4.3251326622557003e-10,
+          1.5096166351963563e-09,
+          1.4764425987711621e-09,
+          1.4735991370933443e-09,
+          1.5541706077123839e-09,
+          1.7105658379921166e-09
+        ],
+        "worst_active_q": 50.72285301506147,
+        "worst_all_orbital_q": 0.005728832903650289,
+        "max_absolute_error_all_orbitals": 1.339592714533211e-08,
+        "active_aggregate_q": 63.55666191623821
+      },
+      "wall_seconds": 118.49424110000109,
+      "cpu_seconds": 117.03125,
+      "peak_rss_mib": 78.13671875,
+      "sampled_pairs": 32768,
+      "pairs_per_stratum": 4096,
+      "batch": 128,
+      "max_particle_number_error": 8.881784197001252e-16,
+      "source_sha256": "1485da5528f014b5d84fa9ee1452936a40f4c74a7fc5d9d23b534fd6c31677a9"
+    },
+    {
+      "case": "final_seed3",
+      "seed": 1160103,
+      "continuous_qm": {
+        "q_per_orbital": [
+          107.92038190052045,
+          0.019391977635715797,
+          0.024232840758225477,
+          0.032164144557448336,
+          0.04323330394374915,
+          139.29084855169287,
+          137.05434509916049,
+          133.53360780362496,
+          130.7865407758536,
+          130.12227551135916
+        ],
+        "signal_rms_per_orbital": [
+          4.5026996973586317e-07,
+          4.225248432145273e-12,
+          6.634278246265818e-12,
+          1.0512409371597254e-11,
+          1.5709224650816556e-11,
+          9.593658036312502e-08,
+          9.317397899022735e-08,
+          9.047676419844451e-08,
+          8.784695372321507e-08,
+          8.528625277905354e-08
+        ],
+        "rmse_per_orbital": [
+          4.172242182676076e-09,
+          2.1788641218125614e-10,
+          2.7377220493696804e-10,
+          3.2683628046817947e-10,
+          3.6335933684956924e-10,
+          6.887500604716436e-10,
+          6.798323608260273e-10,
+          6.775579997171947e-10,
+          6.716819116255253e-10,
+          6.554316118734673e-10
+        ],
+        "worst_active_q": 107.92038190052045,
+        "worst_all_orbital_q": 0.019391977635715797,
+        "max_absolute_error_all_orbitals": 1.3465315862326577e-08,
+        "active_aggregate_q": 111.29224685887628
+      },
+      "historical_grid_qm": {
+        "q_per_orbital": [
+          63.57764099826437,
+          0.01830075512565877,
+          0.023047095592895774,
+          0.030790006271099363,
+          0.04155141758565995,
+          66.3947273470207,
+          64.25504553901324,
+          62.99426442411861,
+          62.45266004577498,
+          62.40741613139035
+        ],
+        "signal_rms_per_orbital": [
+          4.576191296770183e-07,
+          3.985016952875856e-12,
+          6.305583342245503e-12,
+          1.0056435665887943e-11,
+          1.508750924517245e-11,
+          9.741307310176462e-08,
+          9.465100722559913e-08,
+          9.195430768907847e-08,
+          8.932498974211972e-08,
+          8.676477957305957e-08
+        ],
+        "rmse_per_orbital": [
+          7.1977997687820945e-09,
+          2.17751503996063e-10,
+          2.7359557376024367e-10,
+          3.2661362837484333e-10,
+          3.6310456109154233e-10,
+          1.467180858995361e-09,
+          1.4730517491911294e-09,
+          1.4597250802070153e-09,
+          1.4302831885246929e-09,
+          1.39029597684974e-09
+        ],
+        "worst_active_q": 62.40741613139035,
+        "worst_all_orbital_q": 0.01830075512565877,
+        "max_absolute_error_all_orbitals": 1.3396009523880537e-08,
+        "active_aggregate_q": 63.60842819644201
+      },
+      "wall_seconds": 118.22579939999923,
+      "cpu_seconds": 116.609375,
+      "peak_rss_mib": 78.47265625,
+      "sampled_pairs": 32768,
+      "pairs_per_stratum": 4096,
+      "batch": 128,
+      "max_particle_number_error": 8.881784197001252e-16,
+      "source_sha256": "1485da5528f014b5d84fa9ee1452936a40f4c74a7fc5d9d23b534fd6c31677a9"
+    }
+  ],
+  "qm": {
+    "f224": {
+      "nfock": 224,
+      "full_electronic_states": 252,
+      "wavefunction_complex_entries": 56448,
+      "wavefunction_bytes": 903168,
+      "initial_norm": 1.0000000000000375,
+      "max_norm_error": 4.085620730620576e-14,
+      "max_top8_fock_probability": 1.810377845956514e-20,
+      "propagator": "sparse full many-body Fock Hamiltonian expm_multiply; continuous time, no splitting",
+      "wall_seconds": 5.637247499998921,
+      "cpu_seconds": 5.53125,
+      "peak_rss_bytes": 123781120,
+      "current_rss_bytes": 78635008,
+      "model": {
+        "norb": 10,
+        "nel": 5,
+        "bath": "original",
+        "eta": 3e-07,
+        "wc_ev": 2.7,
+        "energies": [
+          -0.6319,
+          -0.2149835347275817,
+          -0.2035009541371695,
+          -0.19174383856145005,
+          -0.17971845498729938,
+          -0.16743065979567368,
+          -0.15488594173819073,
+          -0.14208945886726068,
+          -0.12904607047156363,
+          -0.1157603648533132
+        ],
+        "coupling": [
+          0.0,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537
+        ],
+        "frequency": 0.003674932375856621,
+        "mass": 14583.1067146087,
+        "displacement": 10.352963924025582,
+        "occupied": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "source_model": "v1.14-signed-csr original bath; semicircle is separately labelled"
+      },
+      "method": "qm",
+      "seed": 20260909,
+      "max_particle_number_error": 2.042810365310288e-13,
+      "source_sha256": "1485da5528f014b5d84fa9ee1452936a40f4c74a7fc5d9d23b534fd6c31677a9",
+      "python": "3.11.5 | packaged by Anaconda, Inc. | (main, Sep 11 2023, 13:26:23) [MSC v.1916 64 bit (AMD64)]",
+      "numpy": "1.26.4",
+      "scipy": "1.13.1",
+      "platform": "Windows-10-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+      "min_occupation": 0.0,
+      "max_occupation": 1.0000000000000375
+    },
+    "f192": {
+      "nfock": 192,
+      "full_electronic_states": 252,
+      "wavefunction_complex_entries": 48384,
+      "wavefunction_bytes": 774144,
+      "initial_norm": 0.9999999999999294,
+      "max_norm_error": 7.083222897108499e-14,
+      "max_top8_fock_probability": 1.0608126975461232e-11,
+      "propagator": "sparse full many-body Fock Hamiltonian expm_multiply; continuous time, no splitting",
+      "wall_seconds": 5.132939499999338,
+      "cpu_seconds": 5.0625,
+      "peak_rss_bytes": 117628928,
+      "current_rss_bytes": 78598144,
+      "model": {
+        "norb": 10,
+        "nel": 5,
+        "bath": "original",
+        "eta": 3e-07,
+        "wc_ev": 2.7,
+        "energies": [
+          -0.6319,
+          -0.2149835347275817,
+          -0.2035009541371695,
+          -0.19174383856145005,
+          -0.17971845498729938,
+          -0.16743065979567368,
+          -0.15488594173819073,
+          -0.14208945886726068,
+          -0.12904607047156363,
+          -0.1157603648533132
+        ],
+        "coupling": [
+          0.0,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537
+        ],
+        "frequency": 0.003674932375856621,
+        "mass": 14583.1067146087,
+        "displacement": 10.352963924025582,
+        "occupied": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "source_model": "v1.14-signed-csr original bath; semicircle is separately labelled"
+      },
+      "method": "qm",
+      "seed": 20260909,
+      "max_particle_number_error": 3.5704772471945034e-13,
+      "source_sha256": "1485da5528f014b5d84fa9ee1452936a40f4c74a7fc5d9d23b534fd6c31677a9",
+      "python": "3.11.5 | packaged by Anaconda, Inc. | (main, Sep 11 2023, 13:26:23) [MSC v.1916 64 bit (AMD64)]",
+      "numpy": "1.26.4",
+      "scipy": "1.13.1",
+      "platform": "Windows-10-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+      "min_occupation": 0.0,
+      "max_occupation": 0.9999999999999294
+    },
+    "max_f192_f224_difference": 1.0913492332065289e-13,
+    "grid_vs_continuous_max_difference": 1.3396012632505006e-08
+  },
+  "same_budget_sobol": {
+    "metrics": {
+      "q_per_orbital": [
+        0.4523559603857815,
+        0.016268727519922165,
+        0.023668901905839496,
+        0.03765683267170208,
+        0.05922492540485794,
+        0.4423259215613729,
+        0.43500452455975114,
+        0.4244564281086851,
+        0.4125834196165478,
+        0.4027258506866732
+      ],
+      "signal_rms_per_orbital": [
+        4.5026996973586317e-07,
+        4.225248432145273e-12,
+        6.634278246265818e-12,
+        1.0512409371597254e-11,
+        1.5709224650816556e-11,
+        9.593658036312502e-08,
+        9.317397899022735e-08,
+        9.047676419844451e-08,
+        8.784695372321507e-08,
+        8.528625277905354e-08
+      ],
+      "rmse_per_orbital": [
+        9.953886080153794e-07,
+        2.59715975141336e-10,
+        2.8029514308093166e-10,
+        2.79163398134039e-10,
+        2.652468457060818e-10,
+        2.168911557895523e-07,
+        2.1419082728972674e-07,
+        2.1315913296824258e-07,
+        2.1291925352904248e-07,
+        2.1177248153709292e-07
+      ],
+      "worst_active_q": 0.4027258506866732,
+      "worst_all_orbital_q": 0.016268727519922165,
+      "max_absolute_error_all_orbitals": 2.498636404446586e-06,
+      "active_aggregate_q": 0.4471565097961942
+    },
+    "resources": {
+      "rate": 0.0005477225575051661,
+      "expected_jumps_per_leg": 0.05477225575051661,
+      "sectors": [
+        {
+          "bra": "1",
+          "ket": "1",
+          "probability_with_symmetry": 0.0026887268111565016,
+          "pairs": 4096,
+          "seconds": 8.969341200001509
+        },
+        {
+          "bra": "1",
+          "ket": "2",
+          "pairs": 0,
+          "seconds": 0.0,
+          "analytically_zero": "opposite impurity parity"
+        },
+        {
+          "bra": "1",
+          "ket": "3",
+          "probability_with_symmetry": 2.688726811156502e-06,
+          "pairs": 4096,
+          "seconds": 12.14607690000048
+        },
+        {
+          "bra": "1",
+          "ket": "tail",
+          "probability_with_symmetry": 3.72239278546984e-08,
+          "pairs": 4096,
+          "seconds": 11.904194700000517
+        },
+        {
+          "bra": "2",
+          "ket": "2",
+          "probability_with_symmetry": 2.0165451083673754e-06,
+          "pairs": 4096,
+          "seconds": 14.129039999999804
+        },
+        {
+          "bra": "2",
+          "ket": "3",
+          "pairs": 0,
+          "seconds": 0.0,
+          "analytically_zero": "opposite impurity parity"
+        },
+        {
+          "bra": "2",
+          "ket": "tail",
+          "probability_with_symmetry": 1.0194192482481596e-09,
+          "pairs": 4096,
+          "seconds": 20.366896599996835
+        },
+        {
+          "bra": "3",
+          "ket": "3",
+          "probability_with_symmetry": 6.721817027891256e-10,
+          "pairs": 4096,
+          "seconds": 15.671251900002972
+        },
+        {
+          "bra": "3",
+          "ket": "tail",
+          "probability_with_symmetry": 1.8611963927349202e-11,
+          "pairs": 4096,
+          "seconds": 13.750900600000023
+        },
+        {
+          "bra": "tail",
+          "ket": "tail",
+          "probability_with_symmetry": 1.2883614645994792e-13,
+          "pairs": 4096,
+          "seconds": 18.3290928000024
+        }
+      ],
+      "sampled_pairs": 32768,
+      "pairs_per_sampled_stratum": 4096,
+      "observation_count": 101,
+      "batch": 128,
+      "time_sampling": "scaled",
+      "ordering": "sort",
+      "time_transform": "uniform",
+      "normalization": "known exact unitary norm 1; centered observable; no sample-ratio normalization",
+      "truncation": "none: >=4 jump stratum sampled from full conditional Poisson law; numerical event buffer raises on overflow",
+      "wall_seconds": 115.32375030000185,
+      "cpu_seconds": 113.5,
+      "peak_rss_bytes": 83881984,
+      "current_rss_bytes": 83771392,
+      "model": {
+        "norb": 10,
+        "nel": 5,
+        "bath": "original",
+        "eta": 3e-07,
+        "wc_ev": 2.7,
+        "energies": [
+          -0.6319,
+          -0.2149835347275817,
+          -0.2035009541371695,
+          -0.19174383856145005,
+          -0.17971845498729938,
+          -0.16743065979567368,
+          -0.15488594173819073,
+          -0.14208945886726068,
+          -0.12904607047156363,
+          -0.1157603648533132
+        ],
+        "coupling": [
+          0.0,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537,
+          0.00018257418583505537
+        ],
+        "frequency": 0.003674932375856621,
+        "mass": 14583.1067146087,
+        "displacement": 10.352963924025582,
+        "occupied": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "source_model": "v1.14-signed-csr original bath; semicircle is separately labelled"
+      },
+      "method": "stratified-rqmc",
+      "seed": 1160101,
+      "max_particle_number_error": 8.881784197001252e-16,
+      "source_sha256": "1485da5528f014b5d84fa9ee1452936a40f4c74a7fc5d9d23b534fd6c31677a9",
+      "python": "3.11.5 | packaged by Anaconda, Inc. | (main, Sep 11 2023, 13:26:23) [MSC v.1916 64 bit (AMD64)]",
+      "numpy": "1.26.4",
+      "scipy": "1.13.1",
+      "platform": "Windows-10-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+      "min_occupation": -4.76163465336796e-07,
+      "max_occupation": 1.0000020693258338
+    }
+  },
+  "historical_v093": {
+    "continuous_qm": {
+      "q_per_orbital": [
+        55.900446154241344,
+        0.017034824069712334,
+        0.027488423636610533,
+        0.043214969593252675,
+        0.06247155021011953,
+        56.257633651091574,
+        52.374509056352814,
+        53.70186912963759,
+        52.03338733183584,
+        47.02930227040298
+      ],
+      "signal_rms_per_orbital": [
+        4.5026996973586317e-07,
+        4.225248432145273e-12,
+        6.634278246265818e-12,
+        1.0512409371597254e-11,
+        1.5709224650816556e-11,
+        9.593658036312502e-08,
+        9.317397899022735e-08,
+        9.047676419844451e-08,
+        8.784695372321507e-08,
+        8.528625277905354e-08
+      ],
+      "rmse_per_orbital": [
+        8.054854669557942e-09,
+        2.480359300955566e-10,
+        2.4134807924852903e-10,
+        2.432585159851321e-10,
+        2.514620590969724e-10,
+        1.7053077802404784e-09,
+        1.7789947947765196e-09,
+        1.6847973015619147e-09,
+        1.6882805104150357e-09,
+        1.8134705101233632e-09
+      ],
+      "worst_active_q": 47.02930227040298,
+      "worst_all_orbital_q": 0.017034824069712334,
+      "max_absolute_error_all_orbitals": 3.131463433003745e-08,
+      "active_aggregate_q": 55.228540146636455
+    },
+    "historical_grid_qm": {
+      "q_per_orbital": [
+        67.08816488853661,
+        0.0160667283882433,
+        0.026123819496446942,
+        0.04132588603149263,
+        0.05995869659793467,
+        61.23640618064081,
+        60.14883987785773,
+        64.50240249401912,
+        63.20882727597256,
+        57.25329018068845
+      ],
+      "signal_rms_per_orbital": [
+        4.576191296770183e-07,
+        3.985016952875856e-12,
+        6.305583342245503e-12,
+        1.0056435665887943e-11,
+        1.508750924517245e-11,
+        9.741307310176462e-08,
+        9.465100722559913e-08,
+        9.195430768907847e-08,
+        8.932498974211972e-08,
+        8.676477957305957e-08
+      ],
+      "rmse_per_orbital": [
+        6.821160340834004e-09,
+        2.4802914797463437e-10,
+        2.4137294866484263e-10,
+        2.433447079204637e-10,
+        2.516317081797964e-10,
+        1.5907705755038356e-09,
+        1.5736131805335532e-09,
+        1.4255950807042387e-09,
+        1.4131727100729593e-09,
+        1.5154549074688e-09
+      ],
+      "worst_active_q": 57.25329018068845,
+      "worst_all_orbital_q": 0.0160667283882433,
+      "max_absolute_error_all_orbitals": 4.112724327764994e-08,
+      "active_aggregate_q": 65.9716423636231
+    },
+    "forward_paths": 2000000,
+    "mpi_ranks": 384,
+    "max_rank_peak_rss_kib": 11452,
+    "wall_seconds": null,
+    "note": "Historical v093 uses 512 backward replicas and dt=0.5; path counts are not equivalent units to new paired cubature samples. Wall time unavailable."
+  },
+  "source_data": [
+    {
+      "source_repository_path": "scan_v113_two_buffer_20260905/647656/ahm-qm-s10-n5.dat",
+      "source_sha256": "e6e177883557ea2f6cf965d06614cf8cbb4e884664bc6796b9eee049b4141063",
+      "subset": "historical_grid_qm_0_100.dat",
+      "subset_sha256": "b58a102b6b4972acfe9f33cbde6fd335cdc9cbe925393a59afeb1072d052ada6"
+    },
+    {
+      "source_repository_path": "pure_poisson_figures_20260908/s10n5_t100_n2m_job647976/ahm-sepmb-s10-n5-2000000.dat",
+      "source_sha256": "b84b1143123d8c3beb3488aff9e19ba9a73764793204f5db12e75a05a9810036",
+      "subset": "historical_v093_0_100.dat",
+      "subset_sha256": "cd741276f963627d6b1946553f11e8d72f48ff88f0b71c731c9162279448695e"
+    }
+  ],
+  "kernel_validation": {
+    "checks": 280,
+    "max_state_difference": 1.6091054089879258e-15,
+    "max_observable_difference": 1.176836406102666e-14,
+    "tested_orbitals_electrons": [
+      [
+        3,
+        1
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        10,
+        5
+      ],
+      [
+        30,
+        15
+      ],
+      [
+        50,
+        25
+      ],
+      [
+        50,
+        1
+      ],
+      [
+        50,
+        49
+      ]
+    ],
+    "jacobian_moment_max_error": 2.220446049250313e-15,
+    "conditional_poisson_bins_checked": 64,
+    "status": "PASS; kernel, estimator and sampler checks; physical accuracy assessed separately against full QM"
+  },
+  "limitations": [
+    "The near-stationary orbitals do not pass relative Q>10.",
+    "No 4000-au or large-system trajectory accuracy is established.",
+    "No small-space reference wavefunction is used in the Poisson estimator. QM is an external validation comparator.",
+    "The selected estimator rebuilds scaled paths at each observation time. It does not retain the original full-prefix reuse strategy.",
+    "The lattice samples within each randomized run are correlated; three seed results are reported individually, never averaged.",
+    "Resource values include Python runtime. Full QM is faster and more accurate at this small size.",
+    "No BSD/AAA, HEOM, Filinov filter, or Inchworm cache is implemented in this stage."
+  ]
+}

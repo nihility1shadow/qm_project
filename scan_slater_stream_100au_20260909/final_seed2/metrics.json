@@ -1,0 +1,142 @@
+{
+  "rate": 0.0005477225575051661,
+  "expected_jumps_per_leg": 0.05477225575051661,
+  "sectors": [
+    {
+      "bra": "1",
+      "ket": "1",
+      "probability_with_symmetry": 0.0026887268111565016,
+      "pairs": 4096,
+      "seconds": 8.356775600001129
+    },
+    {
+      "bra": "1",
+      "ket": "2",
+      "pairs": 0,
+      "seconds": 0.0,
+      "analytically_zero": "opposite impurity parity"
+    },
+    {
+      "bra": "1",
+      "ket": "3",
+      "probability_with_symmetry": 2.688726811156502e-06,
+      "pairs": 4096,
+      "seconds": 11.545788499999617
+    },
+    {
+      "bra": "1",
+      "ket": "tail",
+      "probability_with_symmetry": 3.72239278546984e-08,
+      "pairs": 4096,
+      "seconds": 10.373969899999793
+    },
+    {
+      "bra": "2",
+      "ket": "2",
+      "probability_with_symmetry": 2.0165451083673754e-06,
+      "pairs": 4096,
+      "seconds": 12.861272500002087
+    },
+    {
+      "bra": "2",
+      "ket": "3",
+      "pairs": 0,
+      "seconds": 0.0,
+      "analytically_zero": "opposite impurity parity"
+    },
+    {
+      "bra": "2",
+      "ket": "tail",
+      "probability_with_symmetry": 1.0194192482481596e-09,
+      "pairs": 4096,
+      "seconds": 17.703654499997356
+    },
+    {
+      "bra": "3",
+      "ket": "3",
+      "probability_with_symmetry": 6.721817027891256e-10,
+      "pairs": 4096,
+      "seconds": 18.12439710000035
+    },
+    {
+      "bra": "3",
+      "ket": "tail",
+      "probability_with_symmetry": 1.8611963927349202e-11,
+      "pairs": 4096,
+      "seconds": 17.857219299999997
+    },
+    {
+      "bra": "tail",
+      "ket": "tail",
+      "probability_with_symmetry": 1.2883614645994792e-13,
+      "pairs": 4096,
+      "seconds": 21.668009600001824
+    }
+  ],
+  "sampled_pairs": 32768,
+  "pairs_per_sampled_stratum": 4096,
+  "observation_count": 101,
+  "batch": 128,
+  "time_sampling": "scaled",
+  "ordering": "sort",
+  "time_transform": "cubic with exact Jacobian",
+  "normalization": "known exact unitary norm 1; centered observable; no sample-ratio normalization",
+  "truncation": "none: >=4 jump stratum sampled from full conditional Poisson law; numerical event buffer raises on overflow",
+  "wall_seconds": 118.49424110000109,
+  "cpu_seconds": 117.03125,
+  "peak_rss_bytes": 81932288,
+  "current_rss_bytes": 81850368,
+  "model": {
+    "norb": 10,
+    "nel": 5,
+    "bath": "original",
+    "eta": 3e-07,
+    "wc_ev": 2.7,
+    "energies": [
+      -0.6319,
+      -0.2149835347275817,
+      -0.2035009541371695,
+      -0.19174383856145005,
+      -0.17971845498729938,
+      -0.16743065979567368,
+      -0.15488594173819073,
+      -0.14208945886726068,
+      -0.12904607047156363,
+      -0.1157603648533132
+    ],
+    "coupling": [
+      0.0,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537
+    ],
+    "frequency": 0.003674932375856621,
+    "mass": 14583.1067146087,
+    "displacement": 10.352963924025582,
+    "occupied": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "source_model": "v1.14-signed-csr original bath; semicircle is separately labelled"
+  },
+  "method": "stratified-lattice",
+  "seed": 1160102,
+  "max_particle_number_error": 8.881784197001252e-16,
+  "source_sha256": "1485da5528f014b5d84fa9ee1452936a40f4c74a7fc5d9d23b534fd6c31677a9",
+  "python": "3.11.5 | packaged by Anaconda, Inc. | (main, Sep 11 2023, 13:26:23) [MSC v.1916 64 bit (AMD64)]",
+  "numpy": "1.26.4",
+  "scipy": "1.13.1",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+  "min_occupation": 0.0,
+  "max_occupation": 1.0000000020363284
+}

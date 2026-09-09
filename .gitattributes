@@ -1,2 +1,7 @@
 *.slurm text eol=lf
 *.sh text eol=lf
+
+# Preserve recorded source snapshot hashes across checkouts.
+experiments/poisson_slater_stream.py -text whitespace=cr-at-eol
+scan_slater_stream_100au_20260909/final_*/source_snapshot.py -text whitespace=cr-at-eol
+scan_slater_stream_100au_20260909/*.dat -text whitespace=cr-at-eol
