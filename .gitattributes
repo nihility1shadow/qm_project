@@ -5,3 +5,9 @@
 experiments/poisson_slater_stream.py -text whitespace=cr-at-eol
 scan_slater_stream_100au_20260909/final_*/source_snapshot.py -text whitespace=cr-at-eol
 scan_slater_stream_100au_20260909/*.dat -text whitespace=cr-at-eol
+
+# Preserve checkpoint-run source hashes.
+experiments/poisson_slater_long.py -text whitespace=cr-at-eol
+experiments/poisson_one_jump_sector.py -text whitespace=cr-at-eol
+scan_slater_stream_4000au_20260910/*/source_snapshot.py -text whitespace=cr-at-eol
+scan_slater_stream_4000au_20260910/*/kernel_snapshot.py -text whitespace=cr-at-eol

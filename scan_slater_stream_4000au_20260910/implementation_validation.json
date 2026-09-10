@@ -1,0 +1,88 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "norb": 4,
+      "nel": 2,
+      "time_block": 1,
+      "max_difference": 8.673617379884035e-19
+    },
+    {
+      "norb": 4,
+      "nel": 2,
+      "time_block": 3,
+      "max_difference": 8.673617379884035e-19
+    },
+    {
+      "norb": 4,
+      "nel": 2,
+      "time_block": 8,
+      "max_difference": 8.673617379884035e-19
+    },
+    {
+      "norb": 10,
+      "nel": 5,
+      "time_block": 1,
+      "max_difference": 3.2526065174565133e-19
+    },
+    {
+      "norb": 10,
+      "nel": 5,
+      "time_block": 3,
+      "max_difference": 3.2526065174565133e-19
+    },
+    {
+      "norb": 10,
+      "nel": 5,
+      "time_block": 8,
+      "max_difference": 3.2526065174565133e-19
+    },
+    {
+      "norb": 30,
+      "nel": 15,
+      "time_block": 1,
+      "max_difference": 1.0842021724855044e-19
+    },
+    {
+      "norb": 30,
+      "nel": 15,
+      "time_block": 3,
+      "max_difference": 1.0842021724855044e-19
+    },
+    {
+      "norb": 30,
+      "nel": 15,
+      "time_block": 8,
+      "max_difference": 1.0842021724855044e-19
+    },
+    {
+      "norb": 50,
+      "nel": 25,
+      "time_block": 1,
+      "max_difference": 8.131516293641283e-20
+    },
+    {
+      "norb": 50,
+      "nel": 25,
+      "time_block": 3,
+      "max_difference": 8.131516293641283e-20
+    },
+    {
+      "norb": 50,
+      "nel": 25,
+      "time_block": 8,
+      "max_difference": 8.131516293641283e-20
+    }
+  ],
+  "poisson_resume_max_difference": 0.0,
+  "qm_resume_max_difference": 0.0,
+  "benchmark": {
+    "tmax": 100,
+    "pairs_per_stratum": 1024,
+    "original_seconds": 23.951475799993204,
+    "blocked_seconds": 20.37673750000249,
+    "speedup": 1.1754323183478355,
+    "max_difference": 4.2881042954748955e-21
+  },
+  "scope": "Batching/restart equivalence; not a claim of 4000-au trajectory accuracy"
+}
