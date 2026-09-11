@@ -1,0 +1,2 @@
+label,path,n_points,tmax,qm_signal_rms,simulation_signal_rms,error_rms,Q_qm,Q_qm_first_half,Q_qm_second_half,Q_qm_min_half,amplitude_ratio,cosine_similarity,max_abs_occupation_error,max_particle_error
+D3_F384_reference,E:\project_qm\experiments\paper_semicircle_reference_s10n5_t100_20260911\648246\reference-observables.dat,201,100.0,2.8397895032892404e-05,2.839789508635161e-05,1.6240373720330043e-13,174859861.73669955,359967381.3410115,126387375.97873105,126387375.97873105,1.000000001882506,0.9999999999999999,4.000133557724439e-13,2.433608869978343e-13

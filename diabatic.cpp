@@ -1,6 +1,7 @@
 #include <sys/times.h>
 #include <sys/time.h>
 #include <cstdlib>
+#include <cstring>
 
 #include <yyy_inlines.h>
 #include "./qj.h"
@@ -304,6 +305,8 @@ int diabatic(int argc, char **argv) {
           const char *env_eta   = getenv("AHM_ETA");
           const char *env_dele_ev = getenv("AHM_DELE_EV");
           const char *env_nstep = getenv("AHM_NSTEP");
+          const char *env_bath_model = getenv("AHM_BATH_MODEL");
+          const char *bath_model = env_bath_model ? env_bath_model : "oxygen";
           if(env_wc_ev) wc = atof(env_wc_ev)/27.211386245988;
           if(env_eta) eta = atof(env_eta);
           if(env_dele_ev) delE = atof(env_dele_ev)/27.211386245988;
@@ -316,8 +319,14 @@ int diabatic(int argc, char **argv) {
             printf("AHM_NSTEP must be positive.\n");
             abort();
           }
-          printf("#AHAU_PARAMS wc_au=%1.16e wc_eV=%1.16e eta=%1.16e delE_au=%1.16e delE_eV=%1.16e nstep=%d dt=%g\n",
-                 wc, wc*27.211386245988, eta, delE, delE*27.211386245988, nstep, dt);
+          if(strcmp(bath_model, "oxygen") != 0 && strcmp(bath_model, "semicircle") != 0) {
+            printf("AHM_BATH_MODEL must be either oxygen or semicircle.\n");
+            abort();
+          }
+          printf("#AHAU_PARAMS bath_model=%s wc_au=%1.16e wc_eV=%1.16e eta_au2=%1.16e eta_eV2=%1.16e delE_au=%1.16e delE_eV=%1.16e nstep=%d dt=%g\n",
+                 bath_model, wc, wc*27.211386245988, eta,
+                 eta*27.211386245988*27.211386245988,
+                 delE, delE*27.211386245988, nstep, dt);
         }
         xinit  = delx;
         AHM ahm;
@@ -326,7 +335,11 @@ int diabatic(int argc, char **argv) {
         ahm.set_delx(delx);
         ahm.set_grids(npt, xmin, xmax);
         //ahm.discretize(Norb, eta, wc);
-        ahm.diseven(Norb, eta, wc);
+        const char *env_bath_model = getenv("AHM_BATH_MODEL");
+        if(env_bath_model && strcmp(env_bath_model, "semicircle") == 0)
+          ahm.dissemicircle(Norb, eta, wc);
+        else
+          ahm.diseven(Norb, eta, wc);
         ahm.set_Nel(Nel, Norb);
         ahm.set_delE(delE);
         const char *env_path_local_basis = getenv("SEP_MB_PATH_LOCAL_BASIS");

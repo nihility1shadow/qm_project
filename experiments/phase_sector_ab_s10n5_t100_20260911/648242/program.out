@@ -1,0 +1,28 @@
+#AHAU_MPI nproc=4 seed_base=116401 bath_model=semicircle wc_eV=4.0000000000000000e+00 eta_au2=5.4020507214803505e-05 eta_eV2=4.0000000000000001e-02 delE_eV=-1.7194874968839816e+01 nstep=200 dt=0.5
+#SEP_MB_ALGORITHM fock_mode=0 selected=stochastic-poisson fock_states=384 estimated_fock_work_mib=4.429688 auto_fock_max_mib=256.000000
+#SEP_MB_REFERENCE requested_distance=-1 selected_distance=-1 active=0 states=0 max_states=4096 fock_states=384 estimated_work_mib=0.000000
+#SEP_MB_PROGRESS phase=sampling master_completed=0 master_total=50000 elapsed_seconds=0.000609
+#SEP_MB_PROGRESS phase=sampling master_completed=2500 master_total=50000 elapsed_seconds=13.750731
+#SEP_MB_PROGRESS phase=sampling master_completed=5000 master_total=50000 elapsed_seconds=27.527619
+#SEP_MB_PROGRESS phase=sampling master_completed=7500 master_total=50000 elapsed_seconds=41.295440
+#SEP_MB_PROGRESS phase=sampling master_completed=10000 master_total=50000 elapsed_seconds=55.174145
+#SEP_MB_PROGRESS phase=sampling master_completed=12500 master_total=50000 elapsed_seconds=68.967391
+#SEP_MB_PROGRESS phase=sampling master_completed=15000 master_total=50000 elapsed_seconds=82.933646
+#SEP_MB_PROGRESS phase=sampling master_completed=17500 master_total=50000 elapsed_seconds=98.757871
+#SEP_MB_PROGRESS phase=sampling master_completed=20000 master_total=50000 elapsed_seconds=114.693099
+#SEP_MB_PROGRESS phase=sampling master_completed=22500 master_total=50000 elapsed_seconds=131.342092
+#SEP_MB_PROGRESS phase=sampling master_completed=25000 master_total=50000 elapsed_seconds=148.054639
+#SEP_MB_PROGRESS phase=sampling master_completed=27500 master_total=50000 elapsed_seconds=164.776222
+#SEP_MB_PROGRESS phase=sampling master_completed=30000 master_total=50000 elapsed_seconds=181.530402
+#SEP_MB_PROGRESS phase=sampling master_completed=32500 master_total=50000 elapsed_seconds=198.251062
+#SEP_MB_PROGRESS phase=sampling master_completed=35000 master_total=50000 elapsed_seconds=215.141036
+#SEP_MB_PROGRESS phase=sampling master_completed=37500 master_total=50000 elapsed_seconds=231.844628
+#SEP_MB_PROGRESS phase=sampling master_completed=40000 master_total=50000 elapsed_seconds=249.280165
+#SEP_MB_PROGRESS phase=sampling master_completed=42500 master_total=50000 elapsed_seconds=266.857000
+#SEP_MB_PROGRESS phase=sampling master_completed=45000 master_total=50000 elapsed_seconds=284.382041
+#SEP_MB_PROGRESS phase=sampling master_completed=47500 master_total=50000 elapsed_seconds=302.080452
+#SEP_MB_PROGRESS phase=sampling master_completed=50000 master_total=50000 elapsed_seconds=320.532679
+#SEP_MB_TIMING sampling_seconds=320.533081 skipped_zero_reference=0
+#SEP_MB_RAW_DIAGNOSTICS max_raw_norm_error=2.1029512347774393e-03 max_particle_identity_error=1.3993703973369520e-09 directly_measured_rows=135 output_rows=201
+#SEP_MB_RESOURCE max_rank_peak_rss_kb=8992 ranks=4
+#SEP_MB_RESOURCE sum_rank_peak_rss_kb=35644 (sum of individual peaks, not simultaneous RSS)

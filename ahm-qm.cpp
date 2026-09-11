@@ -80,7 +80,7 @@ void AHM::qm(const int nstep, const double dt, const dcomplex alp0) const {
   clock_t st_time = times(&st_cpu);
 
 #ifdef _YYY_EXACT_U1_
-  const int use_exact_u1 = (Nhs == Norb);
+  const int use_exact_u1 = (Nel == 1); // Nhs == Norb also holds for a one-hole many-electron system.
   dcomplex *psi = use_exact_u1 ? array1d<dcomplex>(nstate) : 0,
            *phi = use_exact_u1 ? array1d<dcomplex>(nstate) : 0;
   CMatrix U1t = calc_U1t(dt);
@@ -115,7 +115,12 @@ void AHM::qm(const int nstep, const double dt, const dcomplex alp0) const {
     if(use_exact_u1) {
       for(int j=0; j<npt; j++) {
         for(int n=0; n<nstate; n++) psi[n] = wf[n][j];
-        U1t.vectorply(psi, phi);
+        for(int row=0; row<nstate; row++) {
+          phi[row] = 0.0;
+          for(int column=0; column<nstate; column++) {
+            phi[row] += U1t[row][column]*psi[column];
+          }
+        }
         for(int n=0; n<nstate; n++) wf[n][j] = phi[n];
       }
     } else {
@@ -413,6 +418,51 @@ void AHM::diseven(const int Nstate, const double eta, const double wc){
   }
 
   return;
+}
+
+/*
+ * Equal-weight discretization of the semi-elliptic hybridization
+ *
+ *   Gamma(E) proportional to sqrt((wc/2)^2 - (E-EF)^2).
+ *
+ * Keeping cpl[j] homogeneous is required by SepMBpoisson.  The bath
+ * energies are therefore placed at midpoint quantiles of the normalized
+ * semicircle density, while sum_j cpl[j]^2 = eta is preserved exactly.
+ */
+void AHM::dissemicircle(const int Nstate, const double eta, const double wc) {
+  Norb = Nstate;
+  cpl = array1d<double>(Nstate);
+  En  = array1d<double>(Nstate);
+
+  if(Norb < 2 || eta < 0.0 || wc <= 0.0) {
+    printf("failed to build semi-elliptic bath: invalid Norb, eta, or wc.\n");
+    abort();
+  }
+
+  const double eV_to_au = 1.0/27.211386245988;
+  const double EF = -4.5*eV_to_au;
+  const double radius = 0.5*wc;
+  const double radius2 = radius*radius;
+  const double pi = acos(-1.0);
+  const int M = Norb-1;
+  const double c = sqrt(eta/M);
+
+  En[0] = 0.0;
+  cpl[0] = 0.0;
+  for(int n=0; n<M; n++) {
+    const double quantile = (n+0.5)/M;
+    double lower = -radius, upper = radius;
+    for(int iteration=0; iteration<80; iteration++) {
+      const double x = 0.5*(lower+upper);
+      const double radicand = radius2-x*x;
+      const double root = sqrt(radicand > 0.0 ? radicand : 0.0);
+      const double cdf = 0.5 + (x*root + radius2*asin(x/radius))/(pi*radius2);
+      if(cdf < quantile) lower = x;
+      else upper = x;
+    }
+    En[n+1] = EF + 0.5*(lower+upper);
+    cpl[n+1] = c;
+  }
 }
 
 void AHM::disrandom(const int Nstate, const double eta, const double wc) {

@@ -2686,6 +2686,18 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
               (double)(1.0L*sizeof(dcomplex)*hilbert_state_estimate*phase_memory_bits),
             path_local_basis ? 0 : phase_memory_bits,
             (double)(1.0L*sizeof(dcomplex)*(nstep+1.0)*hilbert_state_estimate));
+    FILE *raw_output = NULL;
+    const char *env_raw_output = getenv("SEP_MB_RAW_OUTPUT");
+    if(env_raw_output && atoi(env_raw_output)) {
+      char raw_name[256];
+      snprintf(raw_name,sizeof(raw_name),"diagnostics-raw-s%d-n%d-%d.dat",Norb,Nel,ntraj);
+      raw_output=fopen(raw_name,"w");
+      if(!raw_output) { perror("raw diagnostics output"); abort(); }
+      fprintf(raw_output,"# time sampled_residual raw_norm raw_particle raw_coordinate raw_vibration raw_orbitals...\n");
+      fprintf(raw_output,"# sampled_residual=0 marks interpolated residual output; reference is available every dt.\n");
+    }
+    double max_raw_norm_error=0.0, max_raw_particle_identity_error=0.0;
+    int directly_measured_rows=0;
     double *rlt = array1d<double>(Norb+3);
     int il = 0;
     for(int t=0; t<=nwf; t++)  {
@@ -2704,6 +2716,18 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
         for(int k=0; k<Norb+3; k++) rlt[k] += reference_prb[t][k];
       }
       double norm = rlt[0]/Nel;
+      double raw_orbital_sum=0.0;
+      for(int k=3;k<Norb+3;k++) raw_orbital_sum+=rlt[k];
+      max_raw_norm_error=std::max(max_raw_norm_error,fabs(norm-1.0));
+      max_raw_particle_identity_error=std::max(max_raw_particle_identity_error,
+                                              fabs(raw_orbital_sum-rlt[0]));
+      const int sampled_residual=measure_slot[t]>=0 ? 1 : 0;
+      directly_measured_rows+=sampled_residual;
+      if(raw_output) {
+        fprintf(raw_output,"%.8f %d %+.16e",t*dt,sampled_residual,norm);
+        for(int k=0;k<Norb+3;k++) fprintf(raw_output," %+.16e",rlt[k]);
+        fprintf(raw_output,"\n");
+      }
       if(fabs(norm) > 1.e-300) {
         fprintf(FL, "%12.8f %+1.16e %+1.16e %+1.16e", t*dt, (double)Nel, rlt[1]/norm, rlt[2]/norm);
         for(int k=3; k<Norb+3; k++) fprintf(FL, " %+1.16e", rlt[k]/norm);
@@ -2713,6 +2737,13 @@ void AHM::SepMBpoisson(const int ntraj, const int nstep, const double dt,
       }
       fprintf(FL, "\n");
     }
+    if(raw_output) {
+      fprintf(raw_output,"#RAW_DIAGNOSTICS_COMPLETE rows=%d directly_measured=%d\n",nwf+1,directly_measured_rows);
+      fclose(raw_output);
+    }
+    printf("#SEP_MB_RAW_DIAGNOSTICS max_raw_norm_error=%.16e "
+           "max_particle_identity_error=%.16e directly_measured_rows=%d output_rows=%d\n",
+           max_raw_norm_error,max_raw_particle_identity_error,directly_measured_rows,nwf+1);
     free1d(rlt);
     fclose(FL);
 

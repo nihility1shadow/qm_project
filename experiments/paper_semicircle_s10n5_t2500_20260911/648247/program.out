@@ -1,0 +1,1 @@
+#AHAU_MPI nproc=1 seed_base=116601 bath_model=semicircle wc_eV=4.0000000000000000e+00 eta_au2=5.4020507214803505e-05 eta_eV2=4.0000000000000001e-02 delE_eV=-1.7194874968839816e+01 nstep=5000 dt=0.5

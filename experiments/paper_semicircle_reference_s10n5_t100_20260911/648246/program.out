@@ -1,0 +1,14 @@
+#AHAU_MPI nproc=64 seed_base=116501 bath_model=semicircle wc_eV=4.0000000000000000e+00 eta_au2=5.4020507214803505e-05 eta_eV2=4.0000000000000001e-02 delE_eV=-1.7194874968839816e+01 nstep=200 dt=0.5
+#SEP_MB_ALGORITHM fock_mode=0 selected=stochastic-poisson fock_states=384 estimated_fock_work_mib=4.429688 auto_fock_max_mib=256.000000
+#SEP_MB_REFERENCE requested_distance=3 selected_distance=3 active=1 states=246 max_states=800000 fock_states=384 estimated_work_mib=2.882812
+#SEP_MB_REFERENCE_GRAPH storage=csr-uniform-signed edges=1210 metadata_mib=0.006500
+#SEP_MB_PROGRESS phase=reference step=0 steps=200 time_au=0.00000000 elapsed_seconds=0.005078 norm=9.9999999999999889e-01
+#SEP_MB_PROGRESS phase=reference step=200 steps=200 time_au=100.00000000 elapsed_seconds=0.285264 norm=9.9999999999995148e-01
+#SEP_MB_REFERENCE_ENCODING compact=1 bytes_per_state=8
+#SEP_MB_TIMING reference_seconds=0.288887 reference_mpi=1 local_fock=6
+#SEP_MB_PROGRESS phase=sampling master_completed=0 master_total=1 elapsed_seconds=0.000803
+#SEP_MB_PROGRESS phase=sampling master_completed=1 master_total=1 elapsed_seconds=0.003363
+#SEP_MB_TIMING sampling_seconds=0.087354 skipped_zero_reference=81594
+#SEP_MB_RAW_DIAGNOSTICS max_raw_norm_error=4.8849813083506888e-14 max_particle_identity_error=2.6645352591003757e-15 directly_measured_rows=52 output_rows=201
+#SEP_MB_RESOURCE max_rank_peak_rss_kb=11268 ranks=64
+#SEP_MB_RESOURCE sum_rank_peak_rss_kb=597000 (sum of individual peaks, not simultaneous RSS)

@@ -34,7 +34,7 @@ class AHM {
     DSPMatrix exc;  // exc[j][k] is the matrix element of the j<->k transition; 
                   //<k| \sum_l g_l(\hat{c}_l^\dagger \hat{d} + \hat{d}^\dagger\hat{c}_l) |j> = exc[k][j] |k>
   public:
-    AHM() {Nel=0; Norb = 0; En=0; cpl=0; occ=0; virt=0; Eocc=0; mass=0; freq=0; delx=0; delE=0;}
+    AHM() {Nel=0; Norb=0; Nhs=0; npt=0; Nex=0; En=0; cpl=0; occ=0; virt=0; Eocc=0; mass=0; freq=0; delx=0; delE=0; xmin=0; xmax=0;}
     ~AHM() {free1d(En); free1d(cpl); free1d(Eocc); free2d(occ); free2d(virt);}
     void set_el(const int n, double *const e, double *const c, const int mel=1) {
       Nel  = mel;
@@ -107,6 +107,7 @@ class AHM {
                 const int excited, const set<int> &state, double *rlt) const ;
     void discretize(const int Nstate, const double eta, const double wc);
     void diseven (const int Nstate, const double eps, const double Emax);
+    void dissemicircle(const int Nstate, const double eta, const double wc);
     void diseven2(const int Nstate, const double eps, const double Emax);
     void disrandom(const int Nstate, const double eta, const double wc);
 };
