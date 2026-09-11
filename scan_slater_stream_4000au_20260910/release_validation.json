@@ -1,0 +1,139 @@
+{
+  "status": "PASS",
+  "date": "2026-09-11",
+  "method": "Export only staged release artifacts and explicit tracked dependencies into an otherwise empty directory; rerun validation and analysis there.",
+  "exported_files": 79,
+  "source_sha256": {
+    "experiments/poisson_slater_stream.py": "1485da5528f014b5d84fa9ee1452936a40f4c74a7fc5d9d23b534fd6c31677a9",
+    "experiments/poisson_slater_long.py": "f95bf150a6fa8f2b4ff8721ca42d5a248c6baa1af434e96ad1e59fe4e611cbee",
+    "experiments/poisson_one_jump_sector.py": "56d751ec48119dd586558e50eb7eb8ca47331d908ee14846a476daf3a7feaa1f",
+    "diagnose_poisson_sectors_4000au.py": "d99f7203365097fee102ad3b5b7fc2971ea8439e19ae422cf239ef9cf493b30d"
+  },
+  "implementation_validation": {
+    "status": "PASS",
+    "cases": [
+      {
+        "norb": 4,
+        "nel": 2,
+        "time_block": 1,
+        "max_difference": 8.673617379884035e-19
+      },
+      {
+        "norb": 4,
+        "nel": 2,
+        "time_block": 3,
+        "max_difference": 8.673617379884035e-19
+      },
+      {
+        "norb": 4,
+        "nel": 2,
+        "time_block": 8,
+        "max_difference": 8.673617379884035e-19
+      },
+      {
+        "norb": 10,
+        "nel": 5,
+        "time_block": 1,
+        "max_difference": 3.2526065174565133e-19
+      },
+      {
+        "norb": 10,
+        "nel": 5,
+        "time_block": 3,
+        "max_difference": 3.2526065174565133e-19
+      },
+      {
+        "norb": 10,
+        "nel": 5,
+        "time_block": 8,
+        "max_difference": 3.2526065174565133e-19
+      },
+      {
+        "norb": 30,
+        "nel": 15,
+        "time_block": 1,
+        "max_difference": 1.0842021724855044e-19
+      },
+      {
+        "norb": 30,
+        "nel": 15,
+        "time_block": 3,
+        "max_difference": 1.0842021724855044e-19
+      },
+      {
+        "norb": 30,
+        "nel": 15,
+        "time_block": 8,
+        "max_difference": 1.0842021724855044e-19
+      },
+      {
+        "norb": 50,
+        "nel": 25,
+        "time_block": 1,
+        "max_difference": 8.131516293641283e-20
+      },
+      {
+        "norb": 50,
+        "nel": 25,
+        "time_block": 3,
+        "max_difference": 8.131516293641283e-20
+      },
+      {
+        "norb": 50,
+        "nel": 25,
+        "time_block": 8,
+        "max_difference": 8.131516293641283e-20
+      }
+    ],
+    "poisson_resume_max_difference": 0.0,
+    "qm_resume_max_difference": 0.0,
+    "benchmark": {
+      "tmax": 100,
+      "pairs_per_stratum": 1024,
+      "original_seconds": 24.38160059999791,
+      "blocked_seconds": 19.980416200007312,
+      "speedup": 1.2202749109895412,
+      "max_difference": 4.2881042954748955e-21
+    },
+    "scope": "Batching/restart equivalence; not a claim of 4000-au trajectory accuracy"
+  },
+  "reconstructed_arrays": [
+    {
+      "run": "analytic_11_diagnostic",
+      "all_arrays_bitwise_identical": true
+    },
+    {
+      "run": "pilot_n256_step10_rb11",
+      "all_arrays_bitwise_identical": true
+    },
+    {
+      "run": "poisson_n4096_seed1160101_rb11",
+      "all_arrays_bitwise_identical": true
+    }
+  ],
+  "all_window_scores_identical": true,
+  "analytic_quadrature_checks": [
+    {
+      "time": 1.0,
+      "quadrature_order": 24,
+      "max_difference": 4.0763460586613204e-21
+    },
+    {
+      "time": 10.0,
+      "quadrature_order": 32,
+      "max_difference": 2.022291161569642e-20
+    },
+    {
+      "time": 50.0,
+      "quadrature_order": 64,
+      "max_difference": 1.8131799027162367e-21
+    },
+    {
+      "time": 100.0,
+      "quadrature_order": 96,
+      "max_difference": 2.4034559878340772e-20
+    }
+  ],
+  "original_4000au_simulation_outputs_unchanged": true,
+  "limitation": "This validates implementation, restart and artifact reproducibility; the full 4000-au Poisson curves still fail Q>=10. Test rerun timings do not replace original production resource records."
+}

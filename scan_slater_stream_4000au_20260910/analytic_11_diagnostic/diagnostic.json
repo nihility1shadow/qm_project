@@ -1,0 +1,73 @@
+{
+  "sector": "bra=1, ket=1 only; higher sectors omitted",
+  "oscillator_levels": 200,
+  "oscillator_probability_tail": 8.08808011562945e-16,
+  "maximum_occupation_tail_bound": 3.595344733623931e-22,
+  "approximation": "Second order in hopping. Not the full untruncated Poisson estimator; no QM input.",
+  "model": {
+    "norb": 10,
+    "nel": 5,
+    "bath": "original",
+    "eta": 3e-07,
+    "wc_ev": 2.7,
+    "energies": [
+      -0.6319,
+      -0.2149835347275817,
+      -0.2035009541371695,
+      -0.19174383856145005,
+      -0.17971845498729938,
+      -0.16743065979567368,
+      -0.15488594173819073,
+      -0.14208945886726068,
+      -0.12904607047156363,
+      -0.1157603648533132
+    ],
+    "coupling": [
+      0.0,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537,
+      0.00018257418583505537
+    ],
+    "frequency": 0.003674932375856621,
+    "mass": 14583.1067146087,
+    "displacement": 10.352963924025582,
+    "occupied": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "source_model": "v1.14-signed-csr original bath; semicircle is separately labelled"
+  },
+  "wall_seconds": 0.01620129999355413,
+  "quadrature_checks": [
+    {
+      "time": 1.0,
+      "quadrature_order": 24,
+      "max_difference": 4.0763460586613204e-21
+    },
+    {
+      "time": 10.0,
+      "quadrature_order": 32,
+      "max_difference": 2.022291161569642e-20
+    },
+    {
+      "time": 50.0,
+      "quadrature_order": 64,
+      "max_difference": 1.8131799027162367e-21
+    },
+    {
+      "time": 100.0,
+      "quadrature_order": 96,
+      "max_difference": 2.4034559878340772e-20
+    }
+  ],
+  "source_sha256": "56d751ec48119dd586558e50eb7eb8ca47331d908ee14846a476daf3a7feaa1f"
+}

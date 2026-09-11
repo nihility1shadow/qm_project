@@ -1,0 +1,23 @@
+{
+  "method": "Full Poisson with exact (1,1) sector replacement",
+  "parent_run": "poisson_n4096_seed1160101",
+  "parent_solver_seconds": 1854.8916301999998,
+  "postprocess_seconds": 0.05238570000074105,
+  "parent_cpu_seconds": 1816.796875,
+  "postprocess_cpu_seconds": 0.046875,
+  "parent_peak_rss_bytes": 97710080,
+  "postprocess_peak_rss_bytes": 81313792,
+  "separate_process_pipeline_peak_bytes": 97710080,
+  "analytic_sector": {
+    "sector": "bra=1, ket=1 only; higher sectors omitted",
+    "oscillator_levels": 200,
+    "oscillator_probability_tail": 8.08808011562945e-16,
+    "maximum_occupation_tail_bound": 3.595344733623931e-22,
+    "approximation": "Second order in hopping. Not the full untruncated Poisson estimator; no QM input."
+  },
+  "full_expansion_retained": true,
+  "qm_input": false,
+  "source_sha256": "d99f7203365097fee102ad3b5b7fc2971ea8439e19ae422cf239ef9cf493b30d",
+  "analytic_source_sha256": "56d751ec48119dd586558e50eb7eb8ca47331d908ee14846a476daf3a7feaa1f",
+  "sampling_reuse": "Reuses the parent samples for all higher sectors; not an independent random run"
+}

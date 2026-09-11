@@ -1,0 +1,14 @@
+[
+  "C:\\anaconda\\python.exe",
+  "E:\\project_qm\\experiments\\poisson_slater_long.py",
+  "--method",
+  "poisson",
+  "--pairs",
+  "256",
+  "--seed",
+  "1164001",
+  "--output-step",
+  "10",
+  "--out",
+  "E:\\project_qm\\scan_slater_stream_4000au_20260910\\pilot_n256_step10"
+]

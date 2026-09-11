@@ -1,0 +1,10 @@
+[
+  "C:\\anaconda\\python.exe",
+  "E:\\project_qm\\experiments\\poisson_slater_long.py",
+  "--method",
+  "qm",
+  "--nfock",
+  "768",
+  "--out",
+  "E:\\project_qm\\scan_slater_stream_4000au_20260910\\qm_f768"
+]

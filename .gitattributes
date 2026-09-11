@@ -11,3 +11,4 @@ experiments/poisson_slater_long.py -text whitespace=cr-at-eol
 experiments/poisson_one_jump_sector.py -text whitespace=cr-at-eol
 scan_slater_stream_4000au_20260910/*/source_snapshot.py -text whitespace=cr-at-eol
 scan_slater_stream_4000au_20260910/*/kernel_snapshot.py -text whitespace=cr-at-eol
+diagnose_poisson_sectors_4000au.py -text whitespace=cr-at-eol

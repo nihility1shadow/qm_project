@@ -1,0 +1,12 @@
+[
+  "C:\\anaconda\\python.exe",
+  "E:\\project_qm\\experiments\\poisson_slater_long.py",
+  "--method",
+  "poisson",
+  "--pairs",
+  "4096",
+  "--seed",
+  "1160101",
+  "--out",
+  "E:\\project_qm\\scan_slater_stream_4000au_20260910\\poisson_n4096_seed1160101"
+]
